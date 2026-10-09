@@ -47,3 +47,9 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Notify Bing and other search engines (IndexNow)
+        continue-on-error: true
+        run: |
+          URLS=$(curl -fsS https://neerajdana.com/urls.txt | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          curl -sS -X POST https://api.indexnow.org/indexnow -H "Content-Type: application/json; charset=utf-8" \
+            -d "{\"host\":\"neerajdana.com\",\"key\":\"0d5aa270e45be7b2b3529240ac7bfdfa\",\"keyLocation\":\"https://neerajdana.com/0d5aa270e45be7b2b3529240ac7bfdfa.txt\",\"urlList\":$URLS}" -w "IndexNow HTTP %{http_code}\n"

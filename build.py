@@ -1,24 +1,35 @@
-"""Builds the static site into dist/ (deploy) and preview/ (artifact preview).
+"""Builds neerajdana.com into dist/ (deploy) and preview/ (in-chat preview).
 
-Change SITE to your real domain before deploying, then run: python3 build.py
+    npm install        # Tailwind CLI + GSAP (CI does this automatically)
+    python3 build.py
+
+Content lives in pages/, styles in src/input.css, scripts in static/js/.
+Titles, descriptions, FAQs, glossary, structured data, sitemap, robots.txt and llms.txt are generated here.
 """
 import html, json, os, re, shutil, subprocess, sys
+from datetime import date
 from pathlib import Path
 
-SITE = "https://neerajdana.com"          # <- your domain, no trailing slash
+SITE = "https://neerajdana.com"
 EMAIL = "neerajdana9@gmail.com"
 LINKEDIN = "https://linkedin.com/in/neeraj-dana"
 GITHUB = "https://github.com/neerajdana996"
 PUBLISHED = "2026-10-09"
+UPDATED = "2026-10-09"
+INDEXNOW_KEY = "0d5aa270e45be7b2b3529240ac7bfdfa"
 
 ROOT = Path(__file__).parent
-DIST = ROOT / "dist"
-PREVIEW = ROOT / "preview"
+DIST, PREVIEW = ROOT / "dist", ROOT / "preview"
 
-TAILWIND_BROWSER = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"   # preview only, never production
-
+TAILWIND_BROWSER = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"   # preview only
+GSAP_VERSION = "3.13.0"
+GSAP_FILES = ["gsap.min.js", "ScrollTrigger.min.js", "MotionPathPlugin.min.js", "DrawSVGPlugin.min.js"]
+GSAP_CDN = f"https://cdnjs.cloudflare.com/ajax/libs/gsap/{GSAP_VERSION}/"
 FONTS = ("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700"
          "&family=Source+Serif+4:opsz,wght@8..60,400..600&family=JetBrains+Mono:wght@400;500&display=swap")
+
+def human_date(d):
+    return date.fromisoformat(d).strftime("%-d %B %Y")
 
 PERSON = {
     "@type": "Person",
@@ -26,36 +37,35 @@ PERSON = {
     "name": "Neeraj Dana",
     "url": f"{SITE}/",
     "image": f"{SITE}/og.png",
-    "jobTitle": "Independent Software Engineer, Distributed and Real-Time Systems",
+    "jobTitle": "Staff-level Software Engineer",
+    "description": "Software engineer with 11+ years building distributed systems, real-time platforms and production AI systems at companies including Atlassian, ServiceNow and Egnyte. Available for consulting and contract work.",
     "email": f"mailto:{EMAIL}",
     "sameAs": [LINKEDIN, GITHUB],
+    "address": {"@type": "PostalAddress", "addressLocality": "Bengaluru", "addressCountry": "IN"},
     "knowsAbout": [
-        "Distributed systems", "Event-driven architecture", "Apache Kafka", "Real-time data synchronization",
-        "Microservices", "Caching with Redis", "Site reliability and incident response",
-        "Large language model orchestration", "Retrieval-augmented generation", "AI agent evaluation",
-        "Reinforcement learning environments for coding agents", "TypeScript", "Node.js", "Python", "Go",
+        "Distributed systems", "Event-driven architecture", "Apache Kafka", "Microservices",
+        "Real-time data synchronization", "Redis caching", "Incident response", "Engineering leadership",
+        "Large language model orchestration", "Retrieval-augmented generation", "AI agents", "AI agent evaluation",
+        "TypeScript", "Node.js", "Python", "Go", "React", "GraphQL",
     ],
-    "homeLocation": {"@type": "Country", "name": "India"},
 }
 
-# ---------------------------------------------------------------- FAQs (one source for HTML and schema)
+# ------------------------------------------------------------------ FAQs (HTML and schema from one source)
 FAQS = {
     "index": [
-        ("What does a distributed systems consultant do?",
-         "A distributed systems consultant reviews, designs and fixes software that runs across several services, queues and databases, where failures, retries and timing can lose, duplicate or reorder data. I map how data moves through your system, find where its guarantees break, and either fix it hands-on or give your team a ranked plan to fix it."),
-        ("How do you price an engagement?",
-         "Architecture reviews are a fixed fee, fractional work is a monthly retainer, and build sprints are priced per sprint or hourly. Every engagement starts with a free 30-minute call, after which I send a written proposal with a fixed scope and price."),
-        ("Why does my Kafka consumer process the same message twice?",
-         "Because the consumer finished the work but its offset commit didn't happen before a rebalance or restart, so the next owner resumed from the old offset. That is Kafka's at-least-once delivery. The durable fix is idempotent processing: store a deduplication key in the same transaction as the side effect.",
-         "notes/kafka-consumer-duplicate-messages-rebalance.html", "Read the full explanation"),
-        ("Do you work with early-stage startups?",
-         "Yes. Seed to Series B teams are a strong fit: they have outgrown their first architecture but don't yet have a staff engineer for the hard parts. Larger companies bring me in for focused reviews or a specific system."),
-        ("Can you work in our time zone?",
-         "I'm based in India and work remotely. My working day overlaps fully with European business hours, and I schedule calls in US mornings or evenings as needed."),
-        ("Do you sign NDAs?",
-         "Yes, and I keep them. That is why this site describes problems and results without naming clients or employers."),
-        ("Which technologies do you work with?",
-         "TypeScript, Node.js, Python and Go; Kafka and event-driven microservices; PostgreSQL, MongoDB, Redis and Qdrant; AWS and Azure; LangChain and LangGraph for LLM systems; and Playwright for end-to-end testing."),
+        ("Who is Neeraj Dana?",
+         "Neeraj Dana is a staff-level software engineer based in Bengaluru, India, with 11+ years of experience building production systems at companies including Atlassian, ServiceNow and Egnyte. He specialises in distributed and event-driven systems, real-time data sync and production AI systems."),
+        ("What does Neeraj specialise in?",
+         "Distributed and event-driven systems (Kafka, microservices), real-time synchronisation and caching, production LLM systems (orchestration, RAG, agents, output validation and evaluation), and engineering leadership, including incident command."),
+        ("What kind of work is Neeraj open to?",
+         "Consulting and advisory (architecture and reliability reviews, fractional staff engineering), contract engineering, including evaluation work for AI labs, and building production AI systems with startups. He works remotely with teams worldwide."),
+        ("What has Neeraj built?",
+         "Checkout, billing and provisioning flows for enterprise customers at Atlassian; the LLM orchestration and validation layers of ServiceNow's prompt-to-app generative AI product; real-time two-way sync between Egnyte and Google Workspace; an event-driven telemetry platform at Trianz; and core banking and anti-money-laundering systems earlier in his career.",
+         "case-studies.html", "Read the case studies"),
+        ("Which time zones does Neeraj work with?",
+         "He is based in India (UTC+5:30). His working day overlaps fully with European business hours, and he schedules calls in US mornings or evenings as needed."),
+        ("How does an engagement with Neeraj start?",
+         "With a free 30-minute call to understand the system and the goal, followed by a written proposal with a fixed scope. Email works best for the first contact, and he replies within one business day."),
     ],
     "ai": [
         ("What is an RL environment for a coding agent?",
@@ -63,7 +73,7 @@ FAQS = {
         ("What makes a good verifier for a coding task?",
          "It checks behaviour rather than matching a reference diff, runs outside the agent's reach, fails every known wrong-but-plausible fix, and gives the same result every time it runs. For timing bugs, that means fault injection and fixed seeds."),
         ("How do you stop agents from gaming a task?",
-         "Hidden tests run in a clean step after the agent finishes, the agent's diff is checked for edits to tests and fixtures, the answer is kept out of git history and comments, and I confirm that shortcuts such as sleeps, retries or hard-coded outputs all fail."),
+         "Hidden tests run in a clean step after the agent finishes, the agent's diff is checked for edits to tests and fixtures, the answer is kept out of git history and comments, and shortcuts such as sleeps, retries or hard-coded outputs are confirmed to fail."),
         ("Can you work inside our existing harness and formats?",
          "Yes. I can author tasks and verifiers in your tooling and formats, under your confidentiality terms, part-time or full-time."),
     ],
@@ -87,61 +97,98 @@ FAQS = {
     ],
 }
 
+KAFKA = "notes/kafka-consumer-duplicate-messages-rebalance.html"
+TASKS = "notes/designing-verifiable-coding-tasks-for-ai-agents.html"
+GLOSSARY = [
+    ("at-least-once-delivery", "At-least-once delivery",
+     "A delivery guarantee where every message is processed one or more times, so nothing is lost but duplicates are possible. It is the default for most Kafka consumers, because a consumer that fails before committing its offset will receive the same messages again.", KAFKA),
+    ("bidirectional-sync", "Bidirectional sync",
+     "Keeping data consistent between two systems where changes can start on either side. It needs a clear owner for each field, version-aware updates so a system ignores echoes of its own writes, and a periodic reconcile job to catch drift.", None),
+    ("cache-invalidation", "Event-driven cache invalidation",
+     "Removing or refreshing cached data when the event that changes it happens, rather than waiting for a timer to expire. It keeps caches fast without serving stale values for long.", None),
+    ("consumer-lag", "Consumer lag",
+     "The number of messages a consumer group still has to process in a partition: the gap between the latest offset written and the group's committed offset. Rising lag means consumers are falling behind producers.", None),
+    ("consumer-rebalance", "Consumer rebalance",
+     "The process in which a Kafka consumer group reassigns partitions among its members, triggered when a consumer joins, leaves or stops responding. Messages processed but not yet committed before a rebalance are delivered again to the new owner.", KAFKA),
+    ("exactly-once-semantics", "Exactly-once semantics (Kafka)",
+     "Kafka's guarantee that a read-process-write loop within Kafka takes effect once, by committing consumed offsets and produced records in a single transaction. It does not extend to side effects in external databases or APIs.", KAFKA),
+    ("flaky-test", "Flaky test",
+     "A test that passes and fails on the same code without any change. Most flakiness comes from shared test data, timing assumptions, environment dependencies or real race conditions in the product.", "case-studies.html#flaky-tests"),
+    ("idempotent-consumer", "Idempotent consumer",
+     "A consumer whose processing has the same effect whether a message arrives once or several times. It is usually built by storing a unique message key in the same transaction as the side effect and skipping keys it has already seen.", KAFKA),
+    ("llm-output-validation", "LLM output validation",
+     "Checking a language model's response before it is used, typically against a schema and business rules, and retrying or falling back when it fails. It stops one malformed response from breaking every step after it.", "case-studies.html#llm-orchestration"),
+    ("rl-environment", "RL environment (for coding agents)",
+     "A sandboxed software project, usually a repository in a container, where an AI agent attempts a task and a verifier scores the result. The score becomes the reward signal for reinforcement learning or the result of an evaluation.", TASKS),
+    ("static-membership", "Static membership (Kafka)",
+     "A Kafka consumer setting, group.instance.id, that gives each consumer a stable identity. A consumer that restarts within the session timeout rejoins with its old partitions and does not trigger a rebalance.", KAFKA),
+    ("transactional-outbox", "Transactional outbox",
+     "A pattern where a service writes an outgoing message to an outbox table in the same database transaction as its state change, and a separate process delivers it. It prevents changes that are saved but never announced, or announced but never saved.", KAFKA),
+    ("verifier", "Verifier (AI evaluation)",
+     "The automated check that decides whether an AI agent completed a task, such as hidden tests or invariant checks run after the agent finishes. A good verifier checks behaviour, cannot be edited by the agent, and fails plausible but wrong fixes.", TASKS),
+]
+
 def faq_html(key, r):
     out = []
-    for i, item in enumerate(FAQS[key]):
-        q, a = item[0], item[1]
-        link = f' <a href="{r}{item[2]}">{item[3]} →</a>' if len(item) > 3 else ""
-        out.append(f'<details{" open" if i == 0 else ""}><summary>{html.escape(q)}</summary>'
-                   f'<div class="answer"><p>{html.escape(a)}{link}</p></div></details>')
+    for i, it in enumerate(FAQS[key]):
+        link = f' <a href="{r}{it[2]}">{it[3]} →</a>' if len(it) > 3 else ""
+        out.append(f'<details{" open" if i == 0 else ""}><summary>{html.escape(it[0])}</summary>'
+                   f'<div class="answer"><p>{html.escape(it[1])}{link}</p></div></details>')
     return "\n      ".join(out)
 
 def faq_schema(key):
     return {"@type": "FAQPage", "mainEntity": [
         {"@type": "Question", "name": it[0], "acceptedAnswer": {"@type": "Answer", "text": it[1]}} for it in FAQS[key]]}
 
+def glossary_html(r):
+    az = " ".join(f'<a href="#{slug}">{html.escape(name)}</a>' for slug, name, _, _ in GLOSSARY)
+    items = []
+    for slug, name, d, link in GLOSSARY:
+        more = f'<a class="more" href="{r}{link}">Read more →</a>' if link else ""
+        items.append(f'<article class="term" id="{slug}"><h2>{html.escape(name)}</h2><p>{html.escape(d)}</p>{more}</article>')
+    return f'<nav class="az" aria-label="Terms">{az}</nav>\n  <div class="terms">\n  ' + "\n  ".join(items) + "\n  </div>"
+
 def crumbs(*items):
     return {"@type": "BreadcrumbList", "itemListElement": [
         {"@type": "ListItem", "position": i + 1, "name": n, "item": f"{SITE}/{p}"} for i, (n, p) in enumerate(items)]}
 
 def offer(name, desc):
-    return {"@type": "Offer",
-            "itemOffered": {"@type": "Service", "name": name, "description": desc, "provider": {"@id": f"{SITE}/#person"}}}
+    return {"@type": "Offer", "itemOffered": {"@type": "Service", "name": name, "description": desc, "provider": {"@id": f"{SITE}/#person"}}}
 
 def article(path, headline, desc, section):
     return {"@type": "TechArticle", "headline": headline, "description": desc, "articleSection": section,
-            "datePublished": PUBLISHED, "dateModified": PUBLISHED, "inLanguage": "en",
+            "datePublished": PUBLISHED, "dateModified": UPDATED, "inLanguage": "en",
             "author": {"@id": f"{SITE}/#person"}, "publisher": {"@id": f"{SITE}/#person"},
             "image": f"{SITE}/og.png", "mainEntityOfPage": f"{SITE}/{path}"}
 
-# ---------------------------------------------------------------- pages
+# ------------------------------------------------------------------ pages
 PAGES = [
-    dict(src="index.html", out="index.html", nav="home", faq="index",
-         title="Neeraj Dana · Distributed & Real-Time Systems Engineer",
-         desc="Independent staff-level engineer who fixes event-driven and real-time systems: duplicate and lost messages, consumer lag, sync drift, caching and production LLM features.",
+    dict(src="index.html", out="index.html", nav="home", faq="index", scripts=["home.js"],
+         title="Neeraj Dana · Software Engineer for Distributed Systems, Real-Time Platforms & Production AI",
+         desc="Neeraj Dana is a staff-level software engineer with 11+ years at Atlassian, ServiceNow and Egnyte, building distributed systems, real-time platforms and production AI. Open to consulting and contract work.",
          schema=lambda: [
              {"@type": "WebSite", "@id": f"{SITE}/#website", "url": f"{SITE}/", "name": "Neeraj Dana", "publisher": {"@id": f"{SITE}/#person"}, "inLanguage": "en"},
+             {"@type": "ProfilePage", "@id": f"{SITE}/#profile", "url": f"{SITE}/", "mainEntity": {"@id": f"{SITE}/#person"},
+              "dateModified": UPDATED, "isPartOf": {"@id": f"{SITE}/#website"}},
              PERSON,
-             {"@type": "ProfessionalService", "@id": f"{SITE}/#service", "name": "Neeraj Dana, distributed systems consulting",
-              "url": f"{SITE}/", "image": f"{SITE}/og.png", "founder": {"@id": f"{SITE}/#person"}, "areaServed": "Worldwide",
-              "email": EMAIL,
-              "description": "Architecture reviews, fractional staff engineering and hands-on fixes for event-driven, real-time and LLM systems.",
+             {"@type": "ProfessionalService", "@id": f"{SITE}/#service", "name": "Neeraj Dana, software engineering consulting",
+              "url": f"{SITE}/", "image": f"{SITE}/og.png", "founder": {"@id": f"{SITE}/#person"}, "areaServed": "Worldwide", "email": EMAIL,
+              "description": "Consulting, contract engineering and production AI work on distributed, real-time and AI systems.",
               "makesOffer": [
-                  offer("Architecture & reliability review", "Two-week fixed-scope review of an event-driven or real-time system with a ranked fix plan."),
-                  offer("Fractional staff engineer", "One to two days a week of senior technical leadership and hands-on work."),
-                  offer("Build & fix sprints", "Hands-on implementation: idempotent consumers, real-time sync, caching, LLM orchestration and evals."),
-                  offer("AI agent evaluation tasks", "Verifiable software-engineering tasks and verifiers for training and evaluating coding agents."),
+                  offer("Consulting & advisory", "Architecture and reliability reviews, fractional staff engineering and second opinions on major technical decisions."),
+                  offer("Contract engineering", "Senior hands-on engineering on event-driven services, sync, caching and performance, including evaluation work for AI labs."),
+                  offer("Production AI for startups", "LLM features from prototype to production: orchestration, RAG, agents, output validation and evals."),
               ]},
              faq_schema("index")]),
     dict(src="case-studies.html", out="case-studies.html", nav="cases", faq=None,
-         title="Case Studies · Distributed Systems, Real-Time Sync & LLM Orchestration · Neeraj Dana",
-         desc="Anonymised case studies: cutting flaky end-to-end tests by 80%, real-time bidirectional sync across two platforms, a caching layer with 30% lower latency, and LLM orchestration.",
+         title="Case Studies · Atlassian, Egnyte & ServiceNow · Neeraj Dana",
+         desc="Case studies by Neeraj Dana: cutting flaky end-to-end tests by 80% at Atlassian, real-time sync between Egnyte and Google Workspace, a caching layer with 30% lower latency, and LLM orchestration at ServiceNow.",
          schema=lambda: [
              {"@type": "CollectionPage", "name": "Case studies", "url": f"{SITE}/case-studies.html", "author": {"@id": f"{SITE}/#person"}},
              crumbs(("Home", ""), ("Case studies", "case-studies.html"))]),
-    dict(src="ai-agent-evaluation.html", out="ai-agent-evaluation.html", nav="ai", faq="ai",
-         title="AI Agent Evaluation & RL Environment Tasks for Coding Agents · Neeraj Dana",
-         desc="Hard, verifiable software-engineering tasks and verifiers for AI labs and evaluation teams, built from real distributed-systems failures. Hourly, sprint or full-time contract.",
+    dict(src="ai-agent-evaluation.html", out="ai-agent-evaluation.html", nav="ai", faq="ai", scripts=["gauntlet.js"],
+         title="AI Agent Evaluation & Coding Task Engineering · Neeraj Dana",
+         desc="Hard, verifiable software-engineering tasks and verifiers for AI labs and evaluation teams, built from real distributed-systems failures. Contract work, part-time or full-time.",
          schema=lambda: [
              {"@type": "Service", "name": "AI agent evaluation and coding task engineering", "serviceType": "AI evaluation",
               "provider": {"@id": f"{SITE}/#person"}, "areaServed": "Worldwide", "url": f"{SITE}/ai-agent-evaluation.html",
@@ -149,43 +196,50 @@ PAGES = [
              crumbs(("Home", ""), ("AI agent evaluation", "ai-agent-evaluation.html")),
              faq_schema("ai")]),
     dict(src="notes.html", out="notes.html", nav="notes", faq=None,
-         title="Field Notes on Kafka, Real-Time Systems & AI Evaluation · Neeraj Dana",
-         desc="Practical write-ups on event-driven systems, Kafka, real-time sync, production LLM systems and evaluating AI coding agents.",
+         title="Writing on Kafka, Real-Time Systems & AI Evaluation · Neeraj Dana",
+         desc="Practical write-ups by Neeraj Dana on event-driven systems, Kafka, real-time sync, production LLM systems and evaluating AI coding agents.",
          schema=lambda: [
-             {"@type": "Blog", "name": "Field notes", "url": f"{SITE}/notes.html", "author": {"@id": f"{SITE}/#person"}},
-             crumbs(("Home", ""), ("Field notes", "notes.html"))]),
-    dict(src="notes/kafka-consumer-duplicate-messages-rebalance.html", out="notes/kafka-consumer-duplicate-messages-rebalance.html", nav="notes", faq="kafka",
+             {"@type": "Blog", "name": "Writing", "url": f"{SITE}/notes.html", "author": {"@id": f"{SITE}/#person"}},
+             crumbs(("Home", ""), ("Writing", "notes.html"))]),
+    dict(src="glossary.html", out="glossary.html", nav="notes", faq=None,
+         title="Glossary: Distributed Systems & AI Evaluation Terms · Neeraj Dana",
+         desc="Plain-language definitions of at-least-once delivery, idempotent consumers, consumer rebalances, the transactional outbox, verifiers, RL environments and more.",
+         schema=lambda: [
+             {"@type": "DefinedTermSet", "@id": f"{SITE}/glossary.html#terms", "name": "Distributed systems and AI evaluation glossary",
+              "url": f"{SITE}/glossary.html", "author": {"@id": f"{SITE}/#person"}, "dateModified": UPDATED,
+              "hasDefinedTerm": [{"@type": "DefinedTerm", "@id": f"{SITE}/glossary.html#{s}", "name": n, "description": d,
+                                  "url": f"{SITE}/glossary.html#{s}", "inDefinedTermSet": f"{SITE}/glossary.html#terms"} for s, n, d, _ in GLOSSARY]},
+             crumbs(("Home", ""), ("Glossary", "glossary.html"))]),
+    dict(src=KAFKA, out=KAFKA, nav="notes", faq="kafka", scripts=["lab.js"], og_type="article",
          title="Why Kafka Consumers Process Messages Twice (and How to Stop It)",
-         desc="Kafka consumers process messages twice when the offset commit misses a rebalance or restart. The four causes, and the fixes: idempotent processing, commit on revoke, cooperative rebalancing and static membership.",
-         og_type="article",
+         desc="Kafka consumers process messages twice when the offset commit misses a rebalance or restart. The four causes, the fixes that hold up, and an interactive lab to try it yourself.",
          schema=lambda: [
-             article("notes/kafka-consumer-duplicate-messages-rebalance.html", "Why Kafka consumers process messages twice, and how to stop it",
+             article(KAFKA, "Why Kafka consumers process messages twice, and how to stop it",
                      "The four causes of duplicate processing in Kafka consumers and the fixes that hold up under deploys and crashes.", "Distributed systems"),
-             crumbs(("Home", ""), ("Field notes", "notes.html"), ("Kafka duplicates", "notes/kafka-consumer-duplicate-messages-rebalance.html")),
+             crumbs(("Home", ""), ("Writing", "notes.html"), ("Kafka duplicates", KAFKA)),
              faq_schema("kafka")]),
-    dict(src="notes/designing-verifiable-coding-tasks-for-ai-agents.html", out="notes/designing-verifiable-coding-tasks-for-ai-agents.html", nav="notes", faq="tasks",
+    dict(src=TASKS, out=TASKS, nav="notes", faq="tasks", og_type="article",
          title="Designing Verifiable Coding Tasks for AI Agents",
          desc="How to build coding tasks and verifiers for AI agent training and evaluation: realistic environments, shortcut-resistant hidden tests, reproducible race conditions and difficulty calibration.",
-         og_type="article",
          schema=lambda: [
-             article("notes/designing-verifiable-coding-tasks-for-ai-agents.html", "Designing verifiable coding tasks for AI agents",
+             article(TASKS, "Designing verifiable coding tasks for AI agents",
                      "How to build coding tasks and verifiers that are hard for the right reasons and can't be gamed.", "AI evaluation"),
-             crumbs(("Home", ""), ("Field notes", "notes.html"), ("Verifiable coding tasks", "notes/designing-verifiable-coding-tasks-for-ai-agents.html")),
+             crumbs(("Home", ""), ("Writing", "notes.html"), ("Verifiable coding tasks", TASKS)),
              faq_schema("tasks")]),
+    dict(src="404.html", out="404.html", nav=None, faq=None, robots="noindex",
+         title="Page not found · Neeraj Dana", desc="This page doesn't exist. Head back to the home page, case studies or writing.",
+         schema=lambda: [PERSON]),
 ]
-
-PAGES.append(dict(src="404.html", out="404.html", nav=None, faq=None, robots="noindex",
-                  title="Page not found · Neeraj Dana", desc="This page doesn't exist. Head back to the home page, case studies or field notes.",
-                  schema=lambda: [PERSON]))
 
 MARK = ('<svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="var(--accent)"/>'
         '<circle cx="18" cy="32" r="6" fill="var(--on-accent)"/><circle cx="46" cy="18" r="6" fill="var(--on-accent)"/>'
         '<circle cx="46" cy="46" r="6" fill="var(--on-accent)"/><path d="M23 29.5 41 20.5M23 34.5l18 9" stroke="var(--on-accent)" stroke-width="3.5" stroke-linecap="round"/></svg>')
 
+NAV = [("exp", "index.html#experience", "Experience"), ("work", "index.html#work-with-me", "Work with me"),
+       ("cases", "case-studies.html", "Case studies"), ("notes", "notes.html", "Writing")]
+
 def header(r, nav):
-    links = [("services", "index.html#services", "Services"), ("cases", "case-studies.html", "Case studies"),
-             ("ai", "ai-agent-evaluation.html", "AI evaluation"), ("notes", "notes.html", "Field notes")]
-    items = "".join(f'<a href="{r}{h}"{" aria-current=\"page\"" if k == nav else ""}>{t}</a>' for k, h, t in links)
+    items = "".join(f'<a href="{r}{h}"{" aria-current=\"page\"" if k == nav else ""}>{t}</a>' for k, h, t in NAV)
     return (f'<a class="skip" href="#main">Skip to content</a>\n<header class="site-header"><div class="wrap">'
             f'<a class="brand" href="{r}index.html">{MARK}Neeraj Dana</a>'
             f'<nav class="nav" aria-label="Main">{items}<a class="btn btn-primary min-h-10 px-4 text-on-accent no-underline" href="{r}index.html#contact">Contact</a></nav>'
@@ -194,33 +248,38 @@ def header(r, nav):
 def footer(r):
     return (f'<footer class="site-footer"><div class="wrap">'
             f'<div><p><strong class="text-ink font-display">Neeraj Dana</strong></p>'
-            f'<p>Independent engineer for event-driven, real-time and AI systems. Remote, worldwide.</p>'
+            f'<p>Software engineer for distributed, real-time and AI systems. Bengaluru, India · remote worldwide.</p>'
             f'<p class="mt-2 font-mono text-sm select-all">{EMAIL}</p></div>'
-            f'<nav aria-label="Footer"><a href="{r}index.html#services">Services</a><a href="{r}case-studies.html">Case studies</a>'
-            f'<a href="{r}ai-agent-evaluation.html">AI evaluation</a><a href="{r}notes.html">Field notes</a>'
+            f'<nav aria-label="Footer"><a href="{r}index.html#experience">Experience</a><a href="{r}case-studies.html">Case studies</a>'
+            f'<a href="{r}ai-agent-evaluation.html">AI evaluation</a><a href="{r}notes.html">Writing</a><a href="{r}glossary.html">Glossary</a>'
             f'<a href="{LINKEDIN}" rel="me">LinkedIn</a><a href="{GITHUB}" rel="me">GitHub</a></nav>'
             f'<p class="w-full">© 2026 Neeraj Dana</p></div></footer>')
 
-COPY_JS = """<script>
-(function(){var b=document.getElementById('copy-email');if(!b)return;b.addEventListener('click',function(){var t=b.getAttribute('data-copy');
-function done(m){b.textContent=m;setTimeout(function(){b.textContent='Copy';},1800);}
-function sel(){var o=document.getElementById('email');var r=document.createRange();r.selectNodeContents(o);var s=window.getSelection();s.removeAllRanges();s.addRange(r);done('Selected');}
-try{navigator.clipboard.writeText(t).then(function(){done('Copied');},sel);}catch(e){sel();}});})();
-</script>"""
-
 def styles(r, preview):
-    """Production links the compiled stylesheet. The in-chat preview cannot run the
-    Tailwind CLI, so it compiles the same source in the browser instead."""
     if not preview:
         return f'<link rel="stylesheet" href="{r}styles.css">'
-    src = "\n".join(l for l in (ROOT / "src" / "input.css").read_text().splitlines()
-                    if not l.startswith(("@import", "@source")))
+    src = "\n".join(l for l in (ROOT / "src" / "input.css").read_text().splitlines() if not l.startswith(("@import", "@source")))
     return f'<script src="{TAILWIND_BROWSER}"></script>\n<style type="text/tailwindcss">\n{src}\n</style>'
+
+def vendor_gsap_available():
+    return all((ROOT / "node_modules" / "gsap" / "dist" / f).exists() for f in GSAP_FILES)
+
+def scripts(p, r, preview):
+    tags = []
+    if p.get("scripts"):
+        base = GSAP_CDN if (preview or not vendor_gsap_available()) else f"{r}js/vendor/"
+        tags += [f'<script defer src="{base}{f}"></script>' for f in GSAP_FILES]
+        tags += [f'<script defer src="{r}js/{s}"></script>' for s in p["scripts"]]
+    tags.append(f'<script defer src="{r}js/site.js"></script>')
+    return "\n".join(tags)
 
 def head(p, r, preview=False):
     url = f"{SITE}/" if p["out"] == "index.html" else f"{SITE}/{p['out']}"
     graph = json.dumps({"@context": "https://schema.org", "@graph": p["schema"]()}, ensure_ascii=False, indent=1)
     t, d = html.escape(p["title"]), html.escape(p["desc"])
+    article_meta = (f'<meta property="article:published_time" content="{PUBLISHED}">\n'
+                    f'<meta property="article:modified_time" content="{UPDATED}">\n'
+                    f'<meta property="article:author" content="Neeraj Dana">') if p.get("og_type") == "article" else ""
     return f"""<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{t}</title>
@@ -230,7 +289,7 @@ def head(p, r, preview=False):
 <meta name="author" content="Neeraj Dana">
 <meta name="theme-color" content="#F4F5F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D1016" media="(prefers-color-scheme: dark)">
-<meta property="og:type" content="{p.get('og_type', 'website')}">
+<meta property="og:type" content="{p.get('og_type', 'profile' if p['out'] == 'index.html' else 'website')}">
 <meta property="og:site_name" content="Neeraj Dana">
 <meta property="og:title" content="{t}">
 <meta property="og:description" content="{d}">
@@ -242,24 +301,47 @@ def head(p, r, preview=False):
 <meta name="twitter:title" content="{t}">
 <meta name="twitter:description" content="{d}">
 <meta name="twitter:image" content="{SITE}/og.png">
-{"<meta property=\"article:published_time\" content=\"" + PUBLISHED + "\">" if p.get("og_type") == "article" else ""}
+{article_meta}
 <link rel="icon" href="{r}favicon.svg" type="image/svg+xml">
-<link rel="alternate" type="text/plain" title="LLM summary" href="{r}llms.txt">
+<link rel="alternate" type="text/plain" title="Summary for AI assistants" href="{r}llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS}">
 {styles(r, preview)}
+{scripts(p, r, preview)}
 <script type="application/ld+json">
 {graph}
 </script>"""
 
 def body(p, r):
-    src = (ROOT / "pages" / p["src"]).read_text()
-    src = src.replace("{{R}}", r)
+    src = (ROOT / "pages" / p["src"]).read_text().replace("{{R}}", r)
+    src = src.replace("{{UPDATED}}", UPDATED).replace("{{UPDATED_H}}", human_date(UPDATED))
     if p["faq"]:
         src = src.replace("{{FAQ}}", faq_html(p["faq"], r))
+    src = src.replace("{{GLOSSARY}}", glossary_html(r))
     assert "{{" not in src, p["src"]
-    return f"{header(r, p['nav'])}\n<main id=\"main\">\n{src}\n</main>\n{footer(r)}\n{COPY_JS if 'copy-email' in src else ''}"
+    return f'{header(r, p["nav"])}\n<main id="main">\n{src}\n</main>\n{footer(r)}'
+
+def page_text(p):
+    """Plain text of a page's main content, for llms-full.txt."""
+    s = body(p, "/")
+    s = s[s.index("<main"):s.index("</main>")]
+    s = re.sub(r"<(script|style|svg)[\s\S]*?</\1>", " ", s)
+    s = re.sub(r"</(p|h1|h2|h3|li|dt|dd|summary|div|tr)>", "\n", s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = html.unescape(s)
+    s = re.sub(r"[ \t]+([,.;:!?])", r"\1", s)
+    lines = [re.sub(r"[ \t]+", " ", l).strip() for l in s.splitlines()]
+    return "\n".join(l for l in lines if l)
+
+def compile_css():
+    cmd = ["npx", "--no-install", "@tailwindcss/cli", "-i", "src/input.css", "-o", str(DIST / "styles.css"), "--minify"]
+    try:
+        subprocess.run(cmd, cwd=ROOT, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        if os.environ.get("CI"):
+            raise
+        print("warning: Tailwind CLI not installed; run `npm install`. dist/styles.css was not built.", file=sys.stderr)
 
 def build():
     for d in (DIST, PREVIEW):
@@ -267,31 +349,36 @@ def build():
             shutil.rmtree(d)
         d.mkdir()
     for p in PAGES:
-        r = "/" if p["out"] == "404.html" else "../" * p["out"].count("/")   # 404 is served at any depth
+        r = "/" if p["out"] == "404.html" else "../" * p["out"].count("/")
         for d, pv in ((DIST, False), (PREVIEW, True)):
-            full = f'<!doctype html>\n<html lang="en">\n<head>\n{head(p, r, pv)}\n</head>\n<body>\n{body(p, r)}\n</body>\n</html>\n'
+            rr = "" if (pv and p["out"] == "404.html") else r
+            full = f'<!doctype html>\n<html lang="en">\n<head>\n{head(p, rr, pv)}\n</head>\n<body>\n{body(p, rr)}\n</body>\n</html>\n'
             (d / p["out"]).parent.mkdir(parents=True, exist_ok=True)
             (d / p["out"]).write_text(full)
-        if p["out"] == "index.html":
-            # artifact preview wraps the main page in its own skeleton: give it a body fragment
+        if p["out"] == "index.html":   # the in-chat preview wraps its entry page itself
             frag = (f'<title>Neeraj Dana Website</title>\n<link rel="stylesheet" href="{FONTS}">\n'
-                    f'{styles("", True)}\n{body(p, "")}\n')
+                    f'{styles("", True)}\n{scripts(p, "", True)}\n{body(p, "")}\n')
             (PREVIEW / "index.html").write_text(frag)
-    for f in (ROOT / "static").iterdir():
-        for d in (DIST, PREVIEW):
-            shutil.copy(f, d / f.name)
+
+    for d in (DIST, PREVIEW):
+        shutil.copytree(ROOT / "static", d, dirs_exist_ok=True)
+    if vendor_gsap_available():
+        (DIST / "js" / "vendor").mkdir(parents=True, exist_ok=True)
+        for f in GSAP_FILES:
+            shutil.copy(ROOT / "node_modules" / "gsap" / "dist" / f, DIST / "js" / "vendor" / f)
 
     (DIST / "CNAME").write_text("neerajdana.com\n")
     (DIST / ".nojekyll").write_text("")
+    (DIST / f"{INDEXNOW_KEY}.txt").write_text(INDEXNOW_KEY)
     compile_css()
 
-    urls = [("", "1.0"), ("case-studies.html", "0.8"), ("ai-agent-evaluation.html", "0.8"), ("notes.html", "0.6"),
-            ("notes/kafka-consumer-duplicate-messages-rebalance.html", "0.7"),
-            ("notes/designing-verifiable-coding-tasks-for-ai-agents.html", "0.7")]
+    urls = [("", "1.0"), ("case-studies.html", "0.8"), ("ai-agent-evaluation.html", "0.7"), ("notes.html", "0.6"),
+            ("glossary.html", "0.6"), (KAFKA, "0.7"), (TASKS, "0.7")]
     sm = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    sm += [f"  <url><loc>{SITE}/{u}</loc><lastmod>{PUBLISHED}</lastmod><priority>{pr}</priority></url>" for u, pr in urls]
+    sm += [f"  <url><loc>{SITE}/{u}</loc><lastmod>{UPDATED}</lastmod><priority>{pr}</priority></url>" for u, pr in urls]
     sm.append("</urlset>")
     (DIST / "sitemap.xml").write_text("\n".join(sm) + "\n")
+    (DIST / "urls.txt").write_text("\n".join(f"{SITE}/{u}" for u, _ in urls) + "\n")   # used by the IndexNow ping
 
     (DIST / "robots.txt").write_text(f"""# Search engines and AI answer engines are welcome.
 User-agent: *
@@ -321,61 +408,61 @@ Allow: /
 Sitemap: {SITE}/sitemap.xml
 """)
 
-    (DIST / "llms.txt").write_text(f"""# Neeraj Dana
+    llms = f"""# Neeraj Dana
 
-> Independent staff-level software engineer (11+ years) who designs and fixes event-driven, real-time and production AI systems for startups, product teams and AI labs. Based in India, works remotely worldwide. Contact: {EMAIL}
+> Staff-level software engineer based in Bengaluru, India, with 11+ years building production systems at companies including Atlassian, ServiceNow and Egnyte. Specialises in distributed and event-driven systems, real-time data sync and production AI. Open to consulting, contract engineering and work with AI startups, remotely worldwide. Contact: {EMAIL}
 
-## Services
-- [Architecture & reliability review]({SITE}/#services): two-week fixed-scope review of an event-driven or real-time system with a ranked fix plan.
-- [Fractional staff engineer]({SITE}/#services): one to two days a week of senior technical leadership.
-- [Build & fix sprints]({SITE}/#services): idempotent consumers, real-time sync, caching, LLM orchestration and evals.
-- [AI agent evaluation]({SITE}/ai-agent-evaluation.html): verifiable software-engineering tasks, environments and verifiers for training and evaluating coding agents.
+## About
+- [Home and profile]({SITE}/): expertise, experience, what he's open to, and quick facts.
+- [Experience]({SITE}/#experience): Atlassian (commerce, 2025–present), ServiceNow (Staff Software Engineer, Generative AI, 2024–2025), Egnyte (Senior Software Developer, 2023–2024), Trianz (Senior Tech Lead, 2020–2023), Kahnputers (Team Lead, 2016–2020), MegaSoft (Senior Software Developer, 2013–2016).
+- [Case studies]({SITE}/case-studies.html): 80% fewer flaky end-to-end tests at Atlassian; real-time two-way sync between Egnyte and Google Workspace; Redis caching with 30% lower query latency at Egnyte; LLM orchestration and output validation for ServiceNow's prompt-to-app product.
 
-## Expertise
-Distributed systems, event-driven architecture, Apache Kafka, real-time bidirectional sync, Redis caching, microservices, incident response, LLM orchestration and output validation, RAG, AI agent evaluation. Languages: TypeScript, Node.js, Python, Go.
+## Work with him
+- Consulting & advisory: architecture and reliability reviews, fractional staff engineering.
+- Contract engineering: event-driven services, sync, caching, performance; [AI evaluation and coding-task work for AI labs]({SITE}/ai-agent-evaluation.html).
+- Production AI for startups: orchestration, RAG, agents, output validation, evals.
 
-## Case studies
-- [Case studies]({SITE}/case-studies.html): flaky end-to-end tests cut by 80% on a commerce platform; real-time bidirectional sync between two platforms; caching layer with 30% lower query latency; LLM orchestration for a prompt-to-app product. Client names withheld under NDA.
+## Writing
+- [Why Kafka consumers process messages twice, and how to stop it]({SITE}/{KAFKA})
+- [Designing verifiable coding tasks for AI agents]({SITE}/{TASKS})
+- [Glossary of distributed systems and AI evaluation terms]({SITE}/glossary.html)
 
-## Field notes
-- [Why Kafka consumers process messages twice, and how to stop it]({SITE}/notes/kafka-consumer-duplicate-messages-rebalance.html)
-- [Designing verifiable coding tasks for AI agents]({SITE}/notes/designing-verifiable-coding-tasks-for-ai-agents.html)
+## Full text
+- [llms-full.txt]({SITE}/llms-full.txt): every page as plain text.
 
 ## Profiles
 - LinkedIn: {LINKEDIN}
 - GitHub: {GITHUB}
-""")
-    shutil.copy(DIST / "llms.txt", PREVIEW / "llms.txt")
+"""
+    (DIST / "llms.txt").write_text(llms)
+    full = [f"# Neeraj Dana: full site text\n\nSource: {SITE}/ · Updated {UPDATED}\n"]
+    for p in PAGES:
+        if p["out"] == "404.html":
+            continue
+        url = f"{SITE}/" if p["out"] == "index.html" else f"{SITE}/{p['out']}"
+        full.append(f"\n\n---\n\n## {p['title']}\nURL: {url}\n\n{page_text(p)}")
+    (DIST / "llms-full.txt").write_text("".join(full) + "\n")
+    for f in ("llms.txt", "llms-full.txt"):
+        shutil.copy(DIST / f, PREVIEW / f)
     make_og(DIST / "og.png")
     shutil.copy(DIST / "og.png", PREVIEW / "og.png")
-
-def compile_css():
-    cmd = ["npx", "--no-install", "@tailwindcss/cli", "-i", "src/input.css", "-o", str(DIST / "styles.css"), "--minify"]
-    try:
-        subprocess.run(cmd, cwd=ROOT, check=True)
-    except (OSError, subprocess.CalledProcessError):
-        if os.environ.get("CI"):
-            raise
-        print("warning: Tailwind CLI not installed; run `npm install` first. dist/styles.css was not built.", file=sys.stderr)
 
 def make_og(path):
     from PIL import Image, ImageDraw, ImageFont
     W, H = 1200, 630
     im = Image.new("RGB", (W, H), "#0D1016")
     d = ImageDraw.Draw(im)
-    bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    mono = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-    f_eyebrow, f_h, f_name = ImageFont.truetype(mono, 24), ImageFont.truetype(bold, 58), ImageFont.truetype(bold, 34)
+    fonts = "/usr/share/fonts/truetype/dejavu/"
+    bold, mono = ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 96), ImageFont.truetype(fonts + "DejaVuSansMono.ttf", 26)
     d.rectangle([0, 0, 14, H], fill="#8FA8FF")
-    d.text((80, 80), "INDEPENDENT ENGINEER · DISTRIBUTED & REAL-TIME SYSTEMS", font=f_eyebrow, fill="#A6AEBD")
-    lines = ["When your events arrive twice,", "late, or out of order,", "I find out why and fix it."]
-    y = 170
-    for i, ln in enumerate(lines):
-        d.text((80, y), ln, font=f_h, fill="#8FA8FF" if i == 1 else "#E6E9EF")
-        y += 76
-    d.line([80, 470, 1120, 470], fill="#262E3B", width=2)
-    d.text((80, 500), "Neeraj Dana", font=f_name, fill="#E6E9EF")
-    d.text((80, 552), "Kafka · real-time sync · production LLM systems · AI agent evaluation", font=ImageFont.truetype(mono, 22), fill="#A6AEBD")
+    d.text((80, 90), "SOFTWARE ENGINEER · 11+ YEARS", font=mono, fill="#A6AEBD")
+    d.text((80, 150), "Neeraj Dana", font=bold, fill="#E6E9EF")
+    sub = ImageFont.truetype(fonts + "DejaVuSans.ttf", 38)
+    d.text((80, 285), "Distributed systems · real-time platforms", font=sub, fill="#8FA8FF")
+    d.text((80, 340), "production AI", font=sub, fill="#8FA8FF")
+    d.line([80, 450, 1120, 450], fill="#262E3B", width=2)
+    d.text((80, 485), "Atlassian · ServiceNow · Egnyte", font=ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 30), fill="#E6E9EF")
+    d.text((80, 540), "Open to consulting & contract work · neerajdana.com", font=mono, fill="#A6AEBD")
     im.save(path, optimize=True)
 
 if __name__ == "__main__":

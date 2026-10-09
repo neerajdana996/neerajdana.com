@@ -1,10 +1,10 @@
 <article class="article">
   <div class="wrap">
     <header class="article-head">
-      <p class="crumbs"><a href="{{R}}index.html">Home</a> / <a href="{{R}}notes.html">Field notes</a> / Kafka</p>
+      <p class="crumbs"><a href="{{R}}index.html">Home</a> / <a href="{{R}}notes.html">Writing</a> / Kafka</p>
       <h1>Why Kafka consumers process messages twice, and how to stop it</h1>
       <p class="lead">Duplicates after a deploy are not a Kafka bug. They are the default delivery guarantee meeting a side effect that isn't idempotent. Here is where they come from and the fixes that hold up.</p>
-      <p class="byline"><span>Neeraj Dana</span><time datetime="2026-10-09">9 October 2026</time><span>7 min read</span></p>
+      <p class="byline"><span>Neeraj Dana</span><time datetime="2026-10-09">9 October 2026</time><span>7 min read</span><span>Updated <time datetime="{{UPDATED}}">{{UPDATED_H}}</time></span></p>
     </header>
 
     <div class="prose">
@@ -93,6 +93,25 @@ await db.transaction(async (tx) =&gt; {
       <h3>Use transactions only where they apply</h3>
       <p>Kafka's exactly-once semantics cover read-process-write loops that stay inside Kafka: consume from one topic, produce to another, and commit the consumer offsets in the same producer transaction. They don't extend to your database, your email provider or a payment API. For those, you still need idempotence.</p>
 
+      <h2 id="lab">Try it: break it, then fix it</h2>
+      <p>Process a few orders, then trigger a deploy or a crash between the charge and the offset commit and see what the next consumer does. Then turn on the idempotency key and try again.</p>
+      <div class="lab" id="lab-box">
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" data-act="next">Process next order</button>
+          <button class="btn btn-ghost" type="button" data-act="deploy">Deploy (rebalance)</button>
+          <button class="btn btn-ghost" type="button" data-act="crash">Crash after charge</button>
+          <label class="toggle"><input type="checkbox" id="lab-key"><span class="sw2" aria-hidden="true"></span>Idempotency key</label>
+          <button class="btn btn-ghost" type="button" data-act="reset">Reset</button>
+        </div>
+        <div class="lab-state">
+          <div><small>Committed offset</small><b id="l-off">0</b></div>
+          <div><small>Orders received</small><b id="l-ord">0</b></div>
+          <div><small>Duplicate charges</small><b id="l-dup">0</b></div>
+        </div>
+        <div class="charges" id="l-charges" aria-live="polite"></div>
+        <p class="lab-msg" id="l-msg">Process a few orders, then deploy or crash between the charge and the commit.</p>
+      </div>
+
       <h2 id="auto-commit">What about auto-commit?</h2>
       <p>With <code>enable.auto.commit=true</code>, the client commits the offsets returned by earlier polls on a timer during later <code>poll()</code> calls. In a simple synchronous loop, that is still at-least-once. If you hand records to other threads and poll again before they finish, auto-commit can commit records that were never processed, and a crash loses them. If you process asynchronously, turn auto-commit off and commit explicitly after the work is done.</p>
 
@@ -114,7 +133,7 @@ await db.transaction(async (tx) =&gt; {
 
       <aside class="author-box">
         <p class="eyebrow">About the author</p>
-        <p>Neeraj Dana is an independent engineer who designs and fixes event-driven and real-time systems for startups and product teams. If duplicates, lag or ordering bugs are costing you, <a href="{{R}}index.html#contact">tell me about your system</a>.</p>
+        <p>Neeraj Dana is a staff-level software engineer with 11+ years building distributed, real-time and AI systems at companies including Atlassian, ServiceNow and Egnyte. If duplicates, lag or ordering bugs are costing you, <a href="{{R}}index.html#contact">tell me about your system</a>.</p>
       </aside>
     </div>
   </div>
