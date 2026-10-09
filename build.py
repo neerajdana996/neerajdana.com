@@ -71,6 +71,8 @@ FAQS = {
         ("What has Neeraj built?",
          "Checkout, billing and provisioning flows for enterprise customers at Atlassian; the LLM orchestration and validation layers of ServiceNow's prompt-to-app generative AI product; real-time two-way sync between Egnyte and Google Workspace; an event-driven telemetry platform at Trianz; and core banking and anti-money-laundering systems earlier in his career.",
          "case-studies.html", "Read the case studies"),
+        ("Can we contract through a company and sign an NDA?",
+         "Yes. Engagements are contracted through Profract, and NDAs are signed before any code or data is shared."),
         ("Which time zones does Neeraj work with?",
          "He is based in India (UTC+5:30). His working day overlaps fully with European business hours, and he schedules calls in US mornings or evenings as needed."),
         ("How does an engagement with Neeraj start?",
