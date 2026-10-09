@@ -37,8 +37,9 @@ PERSON = {
     "name": "Neeraj Dana",
     "url": f"{SITE}/",
     "image": f"{SITE}/og.png",
-    "jobTitle": "Staff-level Software Engineer",
-    "description": "Software engineer with 11+ years building distributed systems, real-time platforms and production AI systems at companies including Atlassian, ServiceNow and Egnyte. Available for consulting and contract work.",
+    "jobTitle": "Founder, Profract",
+    "description": "Founder of Profract and staff-level software engineer with 11+ years building distributed systems, real-time platforms and production AI at companies including Atlassian, ServiceNow and Egnyte. Profract helps startups build products from idea to production and helps growing companies scale their systems.",
+    "founder": None,
     "email": f"mailto:{EMAIL}",
     "sameAs": [LINKEDIN, GITHUB],
     "address": {"@type": "PostalAddress", "addressLocality": "Bengaluru", "addressCountry": "IN"},
@@ -50,15 +51,23 @@ PERSON = {
     ],
 }
 
+PERSON.pop("founder")
+ORG = {"@type": "Organization", "@id": "https://profract.com/#org", "name": "Profract", "url": "https://profract.com",
+       "founder": {"@id": f"{SITE}/#person"},
+       "description": "Engineering studio founded by Neeraj Dana that builds MVPs for startups, scales systems for growing companies and takes AI features to production."}
+PERSON["affiliation"] = {"@id": "https://profract.com/#org"}
+
 # ------------------------------------------------------------------ FAQs (HTML and schema from one source)
 FAQS = {
     "index": [
         ("Who is Neeraj Dana?",
-         "Neeraj Dana is a staff-level software engineer based in Bengaluru, India, with 11+ years of experience building production systems at companies including Atlassian, ServiceNow and Egnyte. He specialises in distributed and event-driven systems, real-time data sync and production AI systems."),
+         "Neeraj Dana is the founder of Profract and a staff-level software engineer based in Bengaluru, India, with 11+ years of experience building production systems at companies including Atlassian, ServiceNow and Egnyte. He specialises in distributed and event-driven systems, real-time data sync and production AI systems."),
         ("What does Neeraj specialise in?",
          "Distributed and event-driven systems (Kafka, microservices), real-time synchronisation and caching, production LLM systems (orchestration, RAG, agents, output validation and evaluation), and engineering leadership, including incident command."),
-        ("What kind of work is Neeraj open to?",
-         "Consulting and advisory (architecture and reliability reviews, fractional staff engineering), contract engineering, including evaluation work for AI labs, and building production AI systems with startups. He works remotely with teams worldwide."),
+        ("What is Profract?",
+         "Profract is the engineering studio founded by Neeraj Dana. It helps startups build products from idea to production, helps startups and mid-size companies scale their architecture and reliability, and takes AI features and agents to production. Neeraj leads every engagement personally."),
+        ("What services does Neeraj offer through Profract?",
+         "MVP to production for startups, architecture and scaling for startups and mid-size companies (reviews, fractional technical leadership, reliability and performance work), and production AI (orchestration, RAG, agents, output validation and evals). Engagements are remote and worldwide."),
         ("What has Neeraj built?",
          "Checkout, billing and provisioning flows for enterprise customers at Atlassian; the LLM orchestration and validation layers of ServiceNow's prompt-to-app generative AI product; real-time two-way sync between Egnyte and Google Workspace; an event-driven telemetry platform at Trianz; and core banking and anti-money-laundering systems earlier in his career.",
          "case-studies.html", "Read the case studies"),
@@ -164,21 +173,18 @@ def article(path, headline, desc, section):
 # ------------------------------------------------------------------ pages
 PAGES = [
     dict(src="index.html", out="index.html", nav="home", faq="index", scripts=["home.js"],
-         title="Neeraj Dana · Software Engineer for Distributed Systems, Real-Time Platforms & Production AI",
-         desc="Neeraj Dana is a staff-level software engineer with 11+ years at Atlassian, ServiceNow and Egnyte, building distributed systems, real-time platforms and production AI. Open to consulting and contract work.",
+         title="Neeraj Dana · Founder of Profract · Distributed Systems, Real-Time & Production AI",
+         desc="Neeraj Dana, founder of Profract, helps startups go from idea to production and helps growing companies scale. 11+ years building distributed systems, real-time platforms and production AI at Atlassian, ServiceNow and Egnyte.",
          schema=lambda: [
              {"@type": "WebSite", "@id": f"{SITE}/#website", "url": f"{SITE}/", "name": "Neeraj Dana", "publisher": {"@id": f"{SITE}/#person"}, "inLanguage": "en"},
              {"@type": "ProfilePage", "@id": f"{SITE}/#profile", "url": f"{SITE}/", "mainEntity": {"@id": f"{SITE}/#person"},
               "dateModified": UPDATED, "isPartOf": {"@id": f"{SITE}/#website"}},
              PERSON,
-             {"@type": "ProfessionalService", "@id": f"{SITE}/#service", "name": "Neeraj Dana, software engineering consulting",
-              "url": f"{SITE}/", "image": f"{SITE}/og.png", "founder": {"@id": f"{SITE}/#person"}, "areaServed": "Worldwide", "email": EMAIL,
-              "description": "Consulting, contract engineering and production AI work on distributed, real-time and AI systems.",
-              "makesOffer": [
-                  offer("Consulting & advisory", "Architecture and reliability reviews, fractional staff engineering and second opinions on major technical decisions."),
-                  offer("Contract engineering", "Senior hands-on engineering on event-driven services, sync, caching and performance, including evaluation work for AI labs."),
-                  offer("Production AI for startups", "LLM features from prototype to production: orchestration, RAG, agents, output validation and evals."),
-              ]},
+             dict(ORG, **{"areaServed": "Worldwide", "email": EMAIL, "makesOffer": [
+                  offer("MVP to production", "For startups: architecture, hands-on build and launch of a product designed to scale, including AI-first products."),
+                  offer("Architecture & scaling", "For startups and mid-size companies: architecture and reliability reviews, fractional technical leadership, and reliability, performance and data-consistency work."),
+                  offer("Production AI", "Taking LLM features and agents to production: orchestration, RAG, output validation, evals, latency and cost."),
+              ]}),
              faq_schema("index")]),
     dict(src="case-studies.html", out="case-studies.html", nav="cases", faq=None,
          title="Case Studies · Atlassian, Egnyte & ServiceNow · Neeraj Dana",
@@ -235,7 +241,7 @@ MARK = ('<svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect wi
         '<circle cx="18" cy="32" r="6" fill="var(--on-accent)"/><circle cx="46" cy="18" r="6" fill="var(--on-accent)"/>'
         '<circle cx="46" cy="46" r="6" fill="var(--on-accent)"/><path d="M23 29.5 41 20.5M23 34.5l18 9" stroke="var(--on-accent)" stroke-width="3.5" stroke-linecap="round"/></svg>')
 
-NAV = [("exp", "index.html#experience", "Experience"), ("work", "index.html#work-with-me", "Work with me"),
+NAV = [("exp", "index.html#experience", "Experience"), ("work", "index.html#services", "Services"),
        ("cases", "case-studies.html", "Case studies"), ("notes", "notes.html", "Writing")]
 
 def header(r, nav):
@@ -248,7 +254,7 @@ def header(r, nav):
 def footer(r):
     return (f'<footer class="site-footer"><div class="wrap">'
             f'<div><p><strong class="text-ink font-display">Neeraj Dana</strong></p>'
-            f'<p>Software engineer for distributed, real-time and AI systems. Bengaluru, India · remote worldwide.</p>'
+            f'<p>Founder of <a href="https://profract.com">Profract</a>. Distributed, real-time and AI systems. Bengaluru, India · remote worldwide.</p>'
             f'<p class="mt-2 font-mono text-sm select-all">{EMAIL}</p></div>'
             f'<nav aria-label="Footer"><a href="{r}index.html#experience">Experience</a><a href="{r}case-studies.html">Case studies</a>'
             f'<a href="{r}ai-agent-evaluation.html">AI evaluation</a><a href="{r}notes.html">Writing</a><a href="{r}glossary.html">Glossary</a>'
@@ -410,17 +416,18 @@ Sitemap: {SITE}/sitemap.xml
 
     llms = f"""# Neeraj Dana
 
-> Staff-level software engineer based in Bengaluru, India, with 11+ years building production systems at companies including Atlassian, ServiceNow and Egnyte. Specialises in distributed and event-driven systems, real-time data sync and production AI. Open to consulting, contract engineering and work with AI startups, remotely worldwide. Contact: {EMAIL}
+> Founder of Profract (https://profract.com) and staff-level software engineer based in Bengaluru, India, with 11+ years building production systems at companies including Atlassian, ServiceNow and Egnyte. Specialises in distributed and event-driven systems, real-time data sync and production AI. Through Profract he helps startups go from idea to production and helps startups and mid-size companies scale their systems, remotely worldwide. Contact: {EMAIL}
 
 ## About
 - [Home and profile]({SITE}/): expertise, experience, what he's open to, and quick facts.
 - [Experience]({SITE}/#experience): Atlassian (commerce, 2025–present), ServiceNow (Staff Software Engineer, Generative AI, 2024–2025), Egnyte (Senior Software Developer, 2023–2024), Trianz (Senior Tech Lead, 2020–2023), Kahnputers (Team Lead, 2016–2020), MegaSoft (Senior Software Developer, 2013–2016).
 - [Case studies]({SITE}/case-studies.html): 80% fewer flaky end-to-end tests at Atlassian; real-time two-way sync between Egnyte and Google Workspace; Redis caching with 30% lower query latency at Egnyte; LLM orchestration and output validation for ServiceNow's prompt-to-app product.
 
-## Work with him
-- Consulting & advisory: architecture and reliability reviews, fractional staff engineering.
-- Contract engineering: event-driven services, sync, caching, performance; [AI evaluation and coding-task work for AI labs]({SITE}/ai-agent-evaluation.html).
-- Production AI for startups: orchestration, RAG, agents, output validation, evals.
+## Services (through Profract)
+- MVP to production, for startups: architecture, hands-on build and launch, including AI-first products.
+- Architecture & scaling, for startups and mid-size companies: reviews, fractional technical leadership, reliability, performance and data consistency.
+- Production AI: orchestration, RAG, agents, output validation, evals, latency and cost.
+- [AI evaluation and coding-task work for AI labs]({SITE}/ai-agent-evaluation.html).
 
 ## Writing
 - [Why Kafka consumers process messages twice, and how to stop it]({SITE}/{KAFKA})
@@ -455,14 +462,14 @@ def make_og(path):
     fonts = "/usr/share/fonts/truetype/dejavu/"
     bold, mono = ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 96), ImageFont.truetype(fonts + "DejaVuSansMono.ttf", 26)
     d.rectangle([0, 0, 14, H], fill="#8FA8FF")
-    d.text((80, 90), "SOFTWARE ENGINEER · 11+ YEARS", font=mono, fill="#A6AEBD")
+    d.text((80, 90), "FOUNDER, PROFRACT · 11+ YEARS IN PRODUCTION", font=mono, fill="#A6AEBD")
     d.text((80, 150), "Neeraj Dana", font=bold, fill="#E6E9EF")
     sub = ImageFont.truetype(fonts + "DejaVuSans.ttf", 38)
     d.text((80, 285), "Distributed systems · real-time platforms", font=sub, fill="#8FA8FF")
     d.text((80, 340), "production AI", font=sub, fill="#8FA8FF")
     d.line([80, 450, 1120, 450], fill="#262E3B", width=2)
     d.text((80, 485), "Atlassian · ServiceNow · Egnyte", font=ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 30), fill="#E6E9EF")
-    d.text((80, 540), "Open to consulting & contract work · neerajdana.com", font=mono, fill="#A6AEBD")
+    d.text((80, 540), "MVP to production · architecture & scaling · neerajdana.com", font=mono, fill="#A6AEBD")
     im.save(path, optimize=True)
 
 if __name__ == "__main__":
