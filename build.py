@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 SITE = "https://neerajdana.com"
-EMAIL = "neerajdana9@gmail.com"
+EMAIL = "ndana@profract.com"
 LINKEDIN = "https://linkedin.com/in/neeraj-dana"
 GITHUB = "https://github.com/neerajdana996"
 PUBLISHED = "2026-10-09"
