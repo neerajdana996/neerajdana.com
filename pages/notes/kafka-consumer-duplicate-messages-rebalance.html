@@ -1,0 +1,121 @@
+<article class="article">
+  <div class="wrap">
+    <header class="article-head">
+      <p class="crumbs"><a href="{{R}}index.html">Home</a> / <a href="{{R}}notes.html">Field notes</a> / Kafka</p>
+      <h1>Why Kafka consumers process messages twice, and how to stop it</h1>
+      <p class="lead">Duplicates after a deploy are not a Kafka bug. They are the default delivery guarantee meeting a side effect that isn't idempotent. Here is where they come from and the fixes that hold up.</p>
+      <p class="byline"><span>Neeraj Dana</span><time datetime="2026-10-09">9 October 2026</time><span>7 min read</span></p>
+    </header>
+
+    <div class="prose">
+      <div class="answer-box">
+        <p class="eyebrow">Short answer</p>
+        <p>A Kafka consumer processes a message twice when it finishes the work but its offset commit doesn't happen before the partition moves to another consumer or the process restarts. The new owner resumes from the last committed offset and repeats the work. This is Kafka's at-least-once delivery working as designed. The durable fix is to make processing idempotent, usually with a deduplication key written in the same database transaction as the side effect. Committing on partition revocation, cooperative rebalancing and static membership reduce how often it happens, but they don't remove it.</p>
+      </div>
+
+      <h2 id="guarantee">The guarantee you actually have</h2>
+      <p>A consumer group tracks progress with a committed offset per partition: the position of the next record to read. If a consumer processes records and then dies, or loses the partition, before committing, whoever takes over starts from the old committed offset. Those records get delivered again.</p>
+      <p>That is <strong>at-least-once</strong> delivery. You can trade it for at-most-once by committing before processing, but then a crash loses the records instead. For anything involving money, messages to users or counters, losing data is worse than repeating it, so most systems sit on at-least-once whether they chose it or not.</p>
+
+      <figure>
+        <div class="diagram">
+          <svg viewBox="0 0 760 230" role="img" aria-labelledby="dg-title dg-desc">
+            <title id="dg-title">Timeline of a duplicate caused by a rebalance</title>
+            <desc id="dg-desc">Consumer c-2 processes offset 88412, then is removed by a rebalance before committing. Consumer c-1 is assigned the partition, resumes from committed offset 88412 and processes it again.</desc>
+            <line class="lane" x1="110" y1="60" x2="740" y2="60"/>
+            <line class="lane" x1="110" y1="160" x2="740" y2="160"/>
+            <text x="16" y="64">consumer c-2</text>
+            <text x="16" y="164">consumer c-1</text>
+            <rect class="acc" x="130" y="46" width="150" height="28" rx="5"/>
+            <text x="142" y="65" style="fill:var(--on-accent)">process 88412</text>
+            <circle class="warn" cx="318" cy="60" r="7"/>
+            <text class="dim" x="292" y="38">rebalance</text>
+            <text class="dim" x="296" y="96">commit never sent</text>
+            <line class="stroke-warn" x1="318" y1="70" x2="318" y2="150" stroke-dasharray="4 4" stroke-width="1.5"/>
+            <text class="dim" x="330" y="122">partition 3 reassigned · committed offset = 88412</text>
+            <rect class="warn" x="420" y="146" width="150" height="28" rx="5"/>
+            <text x="432" y="165" style="fill:var(--paper)">process 88412</text>
+            <text class="dim" x="420" y="200">same record, side effect runs again</text>
+            <rect class="acc" x="590" y="146" width="140" height="28" rx="5"/>
+            <text x="602" y="165" style="fill:var(--on-accent)">commit 88413</text>
+          </svg>
+        </div>
+        <figcaption>The window between finishing the work and committing the offset is where duplicates come from.</figcaption>
+      </figure>
+
+      <h2 id="causes">The four ways duplicates happen</h2>
+      <h3>1. A rebalance lands between processing and commit</h3>
+      <p>Rolling deploys, autoscaling and a consumer that misses its heartbeats all trigger rebalances. With the classic eager protocol, every member gives up its partitions. Anything processed since the last commit is replayed by the next owner. This is the most common source of "duplicates after every deploy".</p>
+      <h3>2. Processing takes longer than <code>max.poll.interval.ms</code></h3>
+      <p>If the gap between two <code>poll()</code> calls exceeds <code>max.poll.interval.ms</code> (five minutes by default), the consumer is considered stuck and is removed from the group. Its partitions are reassigned, and the slow batch it was working on gets processed again by someone else. A large <code>max.poll.records</code> combined with a slow downstream call is a common way to hit this, and it tends to repeat: the same slow batch keeps getting kicked out.</p>
+      <h3>3. A crash after the side effect, before the commit</h3>
+      <p>The process charges the card, then the pod is OOM-killed. No rebalance protocol can help here. Only idempotent processing does.</p>
+      <h3>4. Producer retries without idempotence</h3>
+      <p>Sometimes the duplicate is already in the topic. A producer that times out waiting for an acknowledgement and retries can write the same record twice. Idempotent producers (<code>enable.idempotence=true</code>, the default in modern clients) prevent this for retries within a producer session, but an application that re-sends after a restart can still create a logical duplicate with a new offset. Your consumer has to tolerate that too.</p>
+
+      <h2 id="fixes">Fixes, in order of importance</h2>
+      <h3>Make the side effect idempotent</h3>
+      <p>This is the only fix that covers all four causes. Give every message a stable key (an event ID set by the producer, or a natural key such as an order ID), and record that you applied it in the same transaction as the effect itself.</p>
+<pre><code><span class="c">-- one row per message you have applied</span>
+CREATE TABLE processed_events (
+  consumer_group text        NOT NULL,
+  event_id       text        NOT NULL,
+  processed_at   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (consumer_group, event_id)
+);</code></pre>
+<pre><code><span class="c">// inside the handler, one database transaction</span>
+await db.transaction(async (tx) =&gt; {
+  const inserted = await tx.query(
+    `INSERT INTO processed_events (consumer_group, event_id)
+     VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    ["orders-svc", event.id]
+  );
+  if (inserted.rowCount === 0) return;   <span class="c">// already applied: skip</span>
+  await tx.query(
+    "INSERT INTO charges (order_id, amount) VALUES ($1, $2)",
+    [event.orderId, event.amount]
+  );
+});
+<span class="c">// commit the Kafka offset only after the transaction commits</span></code></pre>
+      <p>When the effect is a call to another service rather than a database write, pass the same key as an idempotency key to that service. Most payment providers support this. If the downstream service can't deduplicate, write the intent to an outbox table in your transaction and have a single sender deliver it with the key.</p>
+      <p>Keep deduplication state in durable storage. An in-memory set forgets everything on restart, which is exactly when duplicates arrive.</p>
+
+      <h3>Commit before you lose the partition</h3>
+      <p>Register a rebalance listener and synchronously commit the offsets of everything you have finished when partitions are revoked (<code>onPartitionsRevoked</code> in the Java client, or the equivalent hook in yours). This shrinks the replay window during graceful rebalances. It does nothing for crashes.</p>
+
+      <h3>Rebalance less, and less disruptively</h3>
+      <ul>
+        <li><strong>Cooperative rebalancing.</strong> With <code>partition.assignment.strategy=CooperativeStickyAssignor</code>, consumers only give up the partitions that actually move, instead of everything. Kafka 4.0 also made the new consumer group protocol (KIP-848) generally available, which moves assignment to the broker and avoids the group-wide stop. Both reduce disruption; neither changes the delivery guarantee.</li>
+        <li><strong>Static membership.</strong> Set a stable <code>group.instance.id</code> per instance and a <code>session.timeout.ms</code> longer than a normal restart. A pod that restarts during a rolling deploy rejoins with its old identity and its old partitions, with no rebalance at all.</li>
+        <li><strong>Bounded batches.</strong> Size <code>max.poll.records</code> so a full batch finishes well inside <code>max.poll.interval.ms</code> even when downstream is slow. Put timeouts on every downstream call.</li>
+      </ul>
+
+      <h3>Use transactions only where they apply</h3>
+      <p>Kafka's exactly-once semantics cover read-process-write loops that stay inside Kafka: consume from one topic, produce to another, and commit the consumer offsets in the same producer transaction. They don't extend to your database, your email provider or a payment API. For those, you still need idempotence.</p>
+
+      <h2 id="auto-commit">What about auto-commit?</h2>
+      <p>With <code>enable.auto.commit=true</code>, the client commits the offsets returned by earlier polls on a timer during later <code>poll()</code> calls. In a simple synchronous loop, that is still at-least-once. If you hand records to other threads and poll again before they finish, auto-commit can commit records that were never processed, and a crash loses them. If you process asynchronously, turn auto-commit off and commit explicitly after the work is done.</p>
+
+      <h2 id="checklist">Checklist</h2>
+      <ul class="checklist">
+        <li>Every message has a stable ID set by the producer, or a natural key.</li>
+        <li>The dedupe record and the side effect are written in one transaction.</li>
+        <li>External calls carry an idempotency key, or go through an outbox.</li>
+        <li>Offsets are committed after the work, and on partition revocation.</li>
+        <li>Static membership is set for deployments that restart in place.</li>
+        <li>A full batch finishes well within <code>max.poll.interval.ms</code>.</li>
+        <li>A test forces a restart between the effect and the commit, and checks the effect happened once.</li>
+      </ul>
+
+      <h2 id="faq">Frequently asked questions</h2>
+      <div class="faq">
+        {{FAQ}}
+      </div>
+
+      <aside class="author-box">
+        <p class="eyebrow">About the author</p>
+        <p>Neeraj Dana is an independent engineer who designs and fixes event-driven and real-time systems for startups and product teams. If duplicates, lag or ordering bugs are costing you, <a href="{{R}}index.html#contact">tell me about your system</a>.</p>
+      </aside>
+    </div>
+  </div>
+</article>

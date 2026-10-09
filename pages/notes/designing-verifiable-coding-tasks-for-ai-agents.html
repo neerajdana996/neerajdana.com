@@ -1,0 +1,81 @@
+<article class="article">
+  <div class="wrap">
+    <header class="article-head">
+      <p class="crumbs"><a href="{{R}}index.html">Home</a> / <a href="{{R}}notes.html">Field notes</a> / AI evaluation</p>
+      <h1>Designing verifiable coding tasks for AI agents</h1>
+      <p class="lead">A coding task is only as good as its verifier. Here's how I build tasks that are hard for the right reasons, using distributed-systems bugs as the raw material, and verifiers that a capable agent can't talk its way past.</p>
+      <p class="byline"><span>Neeraj Dana</span><time datetime="2026-10-09">9 October 2026</time><span>6 min read</span></p>
+    </header>
+
+    <div class="prose">
+      <div class="answer-box">
+        <p class="eyebrow">Short answer</p>
+        <p>A good coding task for an AI agent has three parts: a realistic environment (a repository running in a container), a clear instruction, and a verifier that checks behaviour the agent can't see or edit. It should be solvable by a strong engineer, fail weaker attempts for the intended reason, and resist shortcuts such as editing tests or special-casing inputs. Bugs from distributed systems make strong tasks because the cause spans processes and timing, and correctness can be checked as an invariant across many replayed runs.</p>
+      </div>
+
+      <h2 id="anatomy">The anatomy of a task</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>What it is</th><th>What goes wrong</th></tr></thead>
+          <tbody>
+            <tr><td>Environment</td><td>A repository and its services in a container, with tools the agent can use</td><td>Toy code with no conventions, so the task tests nothing realistic</td></tr>
+            <tr><td>Instruction</td><td>What a teammate would write in a ticket</td><td>Hidden requirements the verifier checks but the instruction never mentions</td></tr>
+            <tr><td>Verifier</td><td>Tests and checks run after the agent finishes, outside its reach</td><td>Checks that accept wrong fixes, or reject correct ones written differently</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="properties">Seven properties of a good task</h2>
+      <ol>
+        <li><strong>Realistic.</strong> It looks like work someone gets paid to do, in a codebase with history and some mess.</li>
+        <li><strong>Solvable.</strong> A strong engineer can finish it with only what's in the environment. I solve every task myself before shipping it.</li>
+        <li><strong>Unambiguous.</strong> Everything the verifier checks is implied by the instruction or by the code's existing contracts.</li>
+        <li><strong>Verifiable.</strong> Success is decided by behaviour, not by matching a reference diff.</li>
+        <li><strong>Shortcut-resistant.</strong> No pass by deleting tests, hard-coding outputs, or adding a sleep.</li>
+        <li><strong>Leak-free.</strong> The answer isn't sitting in git history, a comment, or a sibling file.</li>
+        <li><strong>Calibrated.</strong> It separates agents. A task every agent passes, or none does, tells you little.</li>
+      </ol>
+
+      <h2 id="why-distributed">Why distributed-systems bugs work so well</h2>
+      <p>Most benchmark-style tasks can be solved by reading one function. Distributed bugs can't. The cause lives in the interaction: a side effect that happens before a commit, a cache filled from a read that was already stale, two replicas applying the same change in different orders. An agent has to build a mental model of the whole flow to fix it, which is the skill you want to measure.</p>
+      <p>They also produce a strong reward signal. Correctness can be written as an invariant, such as "each order is charged exactly once" or "both sides converge to the same state", and checked under many different timings. A fix that only looks right fails.</p>
+
+      <h2 id="verifiers">Building verifiers that hold up</h2>
+      <h3>Test behaviour, not implementation</h3>
+      <p>Assert on outcomes the user would notice: rows in the database, calls to the fake payment provider, the final state of both replicas. Avoid asserting on function names or internal structure, or you will reject correct fixes that take a different route.</p>
+      <h3>Make timing bugs fail reliably</h3>
+      <p>A race that shows up once in fifty runs makes a useless verifier. Two techniques help. First, add fault-injection hooks to the environment (restart the consumer after the side effect, delay one replica, drop an acknowledgement) and trigger them at chosen points. Second, run the scenario across many fixed seeds, so the same interleavings are tested every time and results are reproducible.</p>
+      <h3>Keep the verifier out of reach</h3>
+      <p>Hidden tests are copied in after the agent finishes and run in a clean step. Visible tests can stay in the repository as hints, but they must never be the thing that decides the reward. Also check the agent's diff for edits to test helpers, fixtures or the fault-injection hooks themselves.</p>
+      <h3>Check for the wrong-but-plausible fixes</h3>
+      <p>For each task I write down the fixes a hurried engineer would try and confirm the verifier fails every one. For a duplicate-processing bug, that list includes adding retries, raising timeouts, committing before processing (which loses data instead), and deduplicating in memory (which forgets on restart).</p>
+
+      <h2 id="calibration">Calibrating difficulty</h2>
+      <p>Run several attempts per task with the agents you care about and look at the pass rate. Then read the failures. A failure only counts if the agent failed for the reason the task is about. If agents fail because a tool is broken, a dependency won't install, or the instruction is unclear, the task is measuring the environment, not the agent. Fix it and run again.</p>
+
+      <h2 id="example">A worked example</h2>
+      <p>The instruction says customers occasionally get charged twice after deploys and asks for a fix without changing the public API. The environment holds an order service with an HTTP API, a queue consumer that charges payments, a Postgres database and a fake payment provider. The planted cause is a consumer that charges first and commits its offset second.</p>
+      <p>The hidden verifier replays 500 orders while restarting the consumer at random points across 20 seeds, and passes only if every order is charged exactly once and none is lost. Accepted fixes include an idempotency key stored in the same transaction as the charge, or an idempotent call to the provider keyed by order ID. You can read more about the underlying bug in <a href="{{R}}notes/kafka-consumer-duplicate-messages-rebalance.html">why Kafka consumers process messages twice</a>.</p>
+
+      <h2 id="checklist">Checklist before shipping a task</h2>
+      <ul class="checklist">
+        <li>I solved it myself inside the environment, from the instruction alone.</li>
+        <li>Every verifier check traces back to the instruction or an existing contract.</li>
+        <li>Known wrong-but-plausible fixes all fail.</li>
+        <li>Timing-dependent checks run across fixed seeds and pass or fail reproducibly.</li>
+        <li>The answer isn't in git history, comments or neighbouring files.</li>
+        <li>Agent failures were read, and they fail for the intended reason.</li>
+      </ul>
+
+      <h2 id="faq">Frequently asked questions</h2>
+      <div class="faq">
+        {{FAQ}}
+      </div>
+
+      <aside class="author-box">
+        <p class="eyebrow">About the author</p>
+        <p>Neeraj Dana designs software-engineering tasks and verifiers for teams training and evaluating coding agents, drawing on 11+ years of building distributed systems. <a href="{{R}}ai-agent-evaluation.html">See how I work with AI teams</a>.</p>
+      </aside>
+    </div>
+  </div>
+</article>

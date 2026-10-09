@@ -1,0 +1,117 @@
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="{{R}}index.html">Home</a> / AI agent evaluation</p>
+    <h1>Hard, verifiable coding tasks for AI agents</h1>
+    <p class="lead">For AI labs, environment companies and evaluation teams. I design software-engineering tasks and verifiers built from real distributed-systems failures: race conditions, duplicate delivery, sync drift and ordering bugs. They are hard for the right reasons and can't be passed by guessing.</p>
+    <div class="btn-row mt-7">
+      <a class="btn btn-primary" href="{{R}}index.html#contact">Discuss a project</a>
+      <a class="btn btn-ghost" href="{{R}}notes/designing-verifiable-coding-tasks-for-ai-agents.html">Read my approach</a>
+    </div>
+  </div>
+</header>
+
+<section class="section" aria-labelledby="what-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What I build</p>
+      <h2 id="what-h">Tasks, environments and verifiers</h2>
+    </div>
+    <ul class="symptoms">
+      <li><strong>Task environments</strong><span>Realistic multi-service repositories in containers, with the conventions, history and technical debt real codebases have.</span></li>
+      <li><strong>Verifiers</strong><span>Hidden behavioural tests, invariant checks and stress runs across many seeds, so a race condition fails reliably instead of one time in fifty.</span></li>
+      <li><strong>Difficulty calibration</strong><span>Multiple agent attempts per task, a target pass-rate band, and a read of every failure to confirm the agent failed for the intended reason.</span></li>
+      <li><strong>Shortcut and leak review</strong><span>Checks that a task can't be passed by editing tests, special-casing inputs or finding the answer elsewhere in the repo.</span></li>
+      <li><strong>Task QA</strong><span>Reviewing other authors' tasks for ambiguity, unfair hidden requirements and verifiers that accept wrong answers.</span></li>
+      <li><strong>Evaluation of agentic coding</strong><span>Comparing how agents and setups perform on realistic engineering work, with failure analysis you can act on.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="why-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Why distributed systems</p>
+      <h2 id="why-h">These bugs test reasoning, not recall</h2>
+    </div>
+    <div class="prose">
+      <p>Most coding tasks can be solved by reading one function. Distributed-systems bugs can't. The cause sits in the interaction between processes, timing and state: a commit that happens after a side effect, a cache filled from a stale read, an event applied twice. To fix one, an agent has to build a model of the whole flow.</p>
+      <p>They are also unusually easy to verify well. Correctness can be stated as an invariant ("every order is charged exactly once", "both replicas converge") and checked by replaying the same scenario under many interleavings. That gives a strong, hard-to-game reward signal.</p>
+      <p>I bring 11+ years of building and debugging these systems in production, which is where the realistic failure modes come from.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="sample-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Sample task</p>
+      <h2 id="sample-h">"Orders are sometimes charged twice"</h2>
+      <p class="muted">An illustrative task written for this site, showing how I structure one.</p>
+    </div>
+    <div class="prose">
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th scope="row">Instruction</th><td>Customers report occasional double charges after deploys. Find the cause and fix it without changing the public API.</td></tr>
+            <tr><th scope="row">Environment</th><td>A small order service: an HTTP API, a Kafka-style consumer that charges payments, a Postgres database, a fake payment provider, and a test harness that can trigger consumer restarts.</td></tr>
+            <tr><th scope="row">Planted cause</th><td>The consumer charges the payment, then commits the offset. A restart between the two replays the message and charges again.</td></tr>
+            <tr><th scope="row">Verifier</th><td>Hidden tests replay 500 orders while forcing restarts at random points across 20 seeds. Pass only if every order is charged exactly once and none is lost. The agent cannot see or edit these tests.</td></tr>
+            <tr><th scope="row">Common wrong answers</th><td>Adding sleeps, increasing timeouts, committing before charging (which loses orders instead), or deduplicating in memory (which forgets on restart). All of them fail the verifier.</td></tr>
+            <tr><th scope="row">Accepted fixes</th><td>An idempotency key stored in the same transaction as the charge record, or an idempotent request to the payment provider keyed by order ID.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="engage-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Engagement</p>
+      <h2 id="engage-h">How we can work</h2>
+    </div>
+    <div class="offers">
+      <article class="offer">
+        <p class="eyebrow">Hourly</p>
+        <h3>Contract engineering</h3>
+        <ul><li>Task and verifier authoring inside your pipeline and tooling</li><li>Part-time or full-time</li></ul>
+        <p class="price">Hourly <small>part-time or full-time</small></p>
+      </article>
+      <article class="offer">
+        <p class="eyebrow">Fixed scope</p>
+        <h3>Task sprints</h3>
+        <ul><li>An agreed number of calibrated tasks with verifiers</li><li>Delivered with notes on difficulty and failure modes</li></ul>
+        <p class="price">Per sprint <small>fixed number of tasks</small></p>
+      </article>
+      <article class="offer">
+        <p class="eyebrow">Review</p>
+        <h3>Task and verifier audit</h3>
+        <ul><li>A review of an existing task set for leaks, ambiguity and gameable verifiers</li><li>Findings with concrete fixes</li></ul>
+        <p class="price">Per task set <small>fixed scope</small></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Questions</p>
+      <h2 id="faq-h">Frequently asked</h2>
+    </div>
+    <div class="faq">
+      {{FAQ}}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap callout mt-0">
+    <div>
+      <h2 class="mb-1.5 text-2xl">Building environments or evals?</h2>
+      <p class="muted">Tell me the kind of tasks you need and your timeline. I reply within one business day.</p>
+    </div>
+    <a class="btn btn-primary" href="{{R}}index.html#contact">Start a conversation</a>
+  </div>
+</section>

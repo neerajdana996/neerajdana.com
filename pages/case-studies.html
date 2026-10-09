@@ -1,0 +1,125 @@
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="{{R}}index.html">Home</a> / Case studies</p>
+    <h1>Case studies in distributed and real-time systems</h1>
+    <p class="lead">Four projects, described by the problem and the decisions rather than the company. Names are withheld because I keep my NDAs. Each one ends with what I'd tell another team facing the same problem.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<article class="case" id="flaky-tests" aria-labelledby="cs1">
+  <div class="case-meta">
+    <p class="metric">−80%</p>
+    <dl>
+      <div><dt>Setting</dt><dd>Commerce platform: checkout, billing and provisioning for enterprise customers</dd></div>
+      <div><dt>Role</dt><dd>Owned the end-to-end test migration and the cross-team fix effort</dd></div>
+      <div><dt>Stack</dt><dd>TypeScript, React, Node.js, GraphQL, Playwright</dd></div>
+    </dl>
+  </div>
+  <div class="case-body">
+    <h2 id="cs1">Cutting flaky end-to-end tests by 80%</h2>
+    <h3>The problem</h3>
+    <p>The commerce end-to-end suite failed often enough that engineers re-ran it by reflex. A red build no longer meant a broken product, so real regressions slipped through and deploys slowed down.</p>
+    <h3>What I did</h3>
+    <ul>
+      <li>Audited eight months of recorded failures and classified each one by root cause instead of by test name.</li>
+      <li>Drove the migration of the suite from Cypress to Playwright, using the move to fix waiting and isolation problems at the source.</li>
+      <li>Coordinated fixes with the teams that owned the underlying causes, since many failures came from shared services, not the tests.</li>
+    </ul>
+    <h3>Result</h3>
+    <p>The flaky-test rate dropped by 80% and the team trusted CI again, which raised deployment confidence for every commerce release.</p>
+    <div class="lessons">
+      <p class="eyebrow">What I'd tell another team</p>
+      <p>Treat flakiness as a concurrency problem. Most "random" failures fall into a handful of buckets: shared test data, timing assumptions, environment dependencies, and real race conditions in the product. Count failures per bucket and fix the biggest bucket first. Quarantine a flaky test only with a named owner and a deadline, or quarantine becomes deletion.</p>
+    </div>
+  </div>
+</article>
+
+<article class="case" id="realtime-sync" aria-labelledby="cs2">
+  <div class="case-meta">
+    <p class="metric">2-way</p>
+    <dl>
+      <div><dt>Setting</dt><dd>Enterprise file platform integrating with a widely used cloud office suite</dd></div>
+      <div><dt>Role</dt><dd>Architect of the synchronization layer</dd></div>
+      <div><dt>Stack</dt><dd>TypeScript, Node.js, Kafka</dd></div>
+    </dl>
+  </div>
+  <div class="case-body">
+    <h2 id="cs2">Real-time sync across two different data models</h2>
+    <h3>The problem</h3>
+    <p>Users needed to collaborate on the same files from two platforms in real time. The two sides stored files differently and modelled permissions differently, so a naive copy in each direction would drift, loop, or expose files to the wrong people.</p>
+    <h3>What I did</h3>
+    <p>I architected a bidirectional synchronization layer between the two platforms that kept content and changes flowing both ways in real time, reconciling their storage and permission models.</p>
+    <h3>Result</h3>
+    <p>Real-time collaboration across both platforms, despite their different storage and permission models.</p>
+    <div class="lessons">
+      <p class="eyebrow">What I'd tell another team</p>
+      <p>Decide which side owns each field before writing any code. Make every apply step idempotent and version-aware so echoes of your own writes are recognised and dropped instead of looping. Permission mapping between two models is lossy, so choose the safe direction explicitly. And run a periodic reconcile job even when the event path works, because it's the only thing that catches the drift you didn't predict.</p>
+    </div>
+  </div>
+</article>
+
+<article class="case" id="caching" aria-labelledby="cs3">
+  <div class="case-meta">
+    <p class="metric">−30%</p>
+    <dl>
+      <div><dt>Setting</dt><dd>Enterprise content platform with large customer workloads</dd></div>
+      <div><dt>Role</dt><dd>Designed and built the caching and retrieval layer</dd></div>
+      <div><dt>Stack</dt><dd>Node.js, Redis</dd></div>
+    </dl>
+  </div>
+  <div class="case-body">
+    <h2 id="cs3">A caching layer that cut query latency by 30%</h2>
+    <h3>The problem</h3>
+    <p>Queries for large enterprise customers were slow, and retrieval paths were repeating the same expensive work.</p>
+    <h3>What I did</h3>
+    <p>Engineered a Redis and Node.js caching and retrieval layer in front of the hot paths.</p>
+    <h3>Result</h3>
+    <p>30% lower query latency and 20% faster retrieval at enterprise scale.</p>
+    <div class="lessons">
+      <p class="eyebrow">What I'd tell another team</p>
+      <p>A cache is a second copy of your data, so it's a consistency decision first and a performance decision second. Invalidate on the events that change the data rather than on timers wherever you can, measure p95 and p99 rather than averages, and protect the backing store from a stampede when a popular key expires.</p>
+    </div>
+  </div>
+</article>
+
+<article class="case" id="llm-orchestration" aria-labelledby="cs4">
+  <div class="case-meta">
+    <p class="metric">LLM</p>
+    <dl>
+      <div><dt>Setting</dt><dd>Generative AI product that builds applications from plain-text prompts</dd></div>
+      <div><dt>Role</dt><dd>Core architect for orchestration, prompt management and output validation; mentored 3 engineers</dd></div>
+      <div><dt>Stack</dt><dd>TypeScript, Node.js, LangChain</dd></div>
+    </dl>
+  </div>
+  <div class="case-body">
+    <h2 id="cs4">Orchestration and validation for a prompt-to-app product</h2>
+    <h3>The problem</h3>
+    <p>Turning a plain-text prompt into a working application takes many model calls in sequence. Each call can be slow or return something malformed, and one bad step breaks everything after it.</p>
+    <h3>What I did</h3>
+    <ul>
+      <li>Owned the LLM orchestration, prompt management and output-validation layers.</li>
+      <li>Built high-throughput orchestration pipelines that used parallelism and caching to cut end-to-end generation latency.</li>
+      <li>Set up CI/CD practices, led code reviews, and mentored three engineers on production LLM patterns and A/B testing of model configurations.</li>
+    </ul>
+    <h3>Result</h3>
+    <p>Lower end-to-end generation latency and a validation layer that stopped malformed output from reaching later steps.</p>
+    <div class="lessons">
+      <p class="eyebrow">What I'd tell another team</p>
+      <p>Validate structure before meaning: a schema check is cheap and catches most failures early. Run independent steps in parallel and cache on normalised inputs. Treat a model configuration (model, prompt version, parameters) as a deployable artifact with its own experiments and rollback, exactly like code.</p>
+    </div>
+  </div>
+</article>
+
+</div>
+
+<section class="section">
+  <div class="wrap callout mt-0">
+    <div>
+      <h2 class="mb-1.5 text-2xl">Facing something similar?</h2>
+      <p class="muted">Tell me about the system and the symptom. I'll reply within one business day.</p>
+    </div>
+    <a class="btn btn-primary" href="{{R}}index.html#contact">Start a conversation</a>
+  </div>
+</section>

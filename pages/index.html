@@ -1,0 +1,186 @@
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Independent engineer · Event-driven &amp; real-time systems</p>
+      <h1>When your events arrive twice, late, or <em>out of order</em>, I find out why and fix it.</h1>
+      <p class="lead">I'm Neeraj Dana, a staff-level engineer with 11+ years building event-driven platforms, real-time sync and production AI systems. I work with startups and product teams on the parts of the stack that can't be wrong: pipelines, sync, caches, and the LLM features now running on top of them.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="#contact">Describe your system</a>
+        <a class="btn btn-ghost" href="{{R}}case-studies.html">Read the case studies</a>
+      </div>
+      <ul class="facts" aria-label="Background">
+        <li>11+ years in production systems</li>
+        <li>Led teams of up to 8</li>
+        <li>Incident commander on high-severity outages</li>
+        <li>Works in your time zone</li>
+      </ul>
+    </div>
+    <figure>
+      <div class="log" role="img" aria-label="Consumer log showing a message processed twice after a rebalance, then skipped once a deduplication key is in place">
+        <div class="log-bar"><span>consumer-group: orders-svc</span><span>partition 3</span></div>
+        <div class="log-body"><span class="t">12:04:07.112</span>  offset 88412  processed   order#7731
+<span class="t">12:04:07.540</span>  <span class="w">REBALANCE</span>     member c-2 left (deploy)
+<span class="t">12:04:07.541</span>  revoked before commit · committed=88412
+<span class="t">12:04:09.003</span>  assigned to c-1 · resume at 88412
+<span class="t">12:04:09.010</span>  offset 88412  processed   order#7731  <span class="w">← charged twice</span>
+<span class="sep">── after the fix ──────────────────────────────</span><span class="t">12:04:09.010</span>  offset 88412  order#7731 <span class="k">already applied · skip</span>
+<span class="t">12:04:09.011</span>  commit 88413 <span class="cursor" aria-hidden="true"></span></div>
+      </div>
+      <figcaption class="log-caption">A rolling deploy triggers a rebalance and an order is charged twice. <a href="{{R}}notes/kafka-consumer-duplicate-messages-rebalance.html">The full breakdown →</a></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" id="symptoms" aria-labelledby="symptoms-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Call me when</p>
+      <h2 id="symptoms-h">The problems teams usually bring me</h2>
+      <p class="muted">If one of these sounds familiar, the fix is rarely another retry or a longer timeout. It's usually a missing guarantee somewhere in the design.</p>
+    </div>
+    <ul class="symptoms">
+      <li><strong>Messages get processed twice after deploys or rebalances.</strong><span>Duplicate charges, duplicate emails, counters that drift. I trace where at-least-once delivery meets a non-idempotent side effect.</span></li>
+      <li><strong>Consumer lag climbs and nobody can say why.</strong><span>Slow handlers, poison messages, rebalance storms or a hot partition. I find which one and fix the cause, not the alert.</span></li>
+      <li><strong>Two systems are "in sync" until a user notices they aren't.</strong><span>Bidirectional sync across different data and permission models, with conflict rules and a reconcile loop that catches drift.</span></li>
+      <li><strong>The cache made things fast and occasionally wrong.</strong><span>Invalidation tied to events instead of timers, measured at p95 and p99 rather than averages.</span></li>
+      <li><strong>Your LLM feature works in the demo and breaks on real inputs.</strong><span>Orchestration, output validation and evals that tell you what failed and why, before your users do.</span></li>
+      <li><strong>End-to-end tests fail at random and the team ignores CI.</strong><span>Flakiness is usually a concurrency bug in the tests or the product. I classify the failures and remove the causes.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="services" aria-labelledby="services-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Services</p>
+      <h2 id="services-h">Three ways to work together</h2>
+      <p class="muted">Every engagement starts with a free 30-minute call to check the fit. Once I understand the system, I send a written proposal with a fixed scope.</p>
+    </div>
+    <div class="offers">
+      <article class="offer">
+        <p class="eyebrow">Fixed scope · 2 weeks</p>
+        <h3>Architecture &amp; reliability review</h3>
+        <ul>
+          <li>A failure-mode map of your event flow: where data can be lost, duplicated or reordered</li>
+          <li>Written findings ranked by risk and cost to fix</li>
+          <li>A step-by-step fix plan your team can execute</li>
+          <li>A walkthrough session with your engineers</li>
+        </ul>
+        <p class="price">Fixed fee <small>quoted after the first call</small></p>
+      </article>
+      <article class="offer">
+        <p class="eyebrow">Ongoing · 1–2 days a week</p>
+        <h3>Fractional staff engineer</h3>
+        <ul>
+          <li>Design reviews and the hard technical calls</li>
+          <li>Hands-on work on the riskiest parts of the system</li>
+          <li>Incident follow-ups that remove root causes</li>
+          <li>Mentoring so your team owns it afterwards</li>
+        </ul>
+        <p class="price">Monthly retainer <small>cancel with a month's notice</small></p>
+      </article>
+      <article class="offer">
+        <p class="eyebrow">Hands-on · scoped sprints</p>
+        <h3>Build &amp; fix sprints</h3>
+        <ul>
+          <li>Idempotent consumers and exactly-once-effect pipelines</li>
+          <li>Real-time sync layers and caching with correct invalidation</li>
+          <li>LLM orchestration, output validation and evals</li>
+          <li>Flaky-test elimination and CI you can trust</li>
+        </ul>
+        <p class="price">Per sprint <small>fixed scope, or hourly</small></p>
+      </article>
+    </div>
+    <aside class="callout" aria-labelledby="ai-callout-h">
+      <div>
+        <p class="eyebrow">For AI labs and evaluation teams</p>
+        <h3 id="ai-callout-h">Hard, verifiable coding tasks for AI agents</h3>
+        <p class="muted">Task environments and verifiers built from real distributed-systems failures, the kind agents can't pattern-match their way through.</p>
+      </div>
+      <a class="btn btn-ghost" href="{{R}}ai-agent-evaluation.html">See agent evaluation work</a>
+    </aside>
+  </div>
+</section>
+
+<section class="section" id="review" aria-labelledby="review-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What a review looks like</p>
+      <h2 id="review-h">Two weeks, start to finish</h2>
+    </div>
+    <ol class="timeline">
+      <li><span class="when">Day 1</span><strong>Kickoff</strong><span>A call with your tech lead, read access to code, configs, dashboards and the last few incident reports.</span></li>
+      <li><span class="when">Days 2–5</span><strong>Map the failure modes</strong><span>I trace every hop of the critical flows and note where delivery, ordering or consistency guarantees break.</span></li>
+      <li><span class="when">Days 6–9</span><strong>Prove the top risks</strong><span>Reproduce the worst ones where possible, then design fixes with their tradeoffs written down.</span></li>
+      <li><span class="when">Day 10</span><strong>Report and walkthrough</strong><span>A ranked report and fix plan, walked through live with your engineers. You keep everything.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" id="work" aria-labelledby="work-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Case studies</p>
+      <h2 id="work-h">Recent results</h2>
+      <p class="muted">Client and employer names are left out by design. I sign NDAs and keep them. Ask me about any of these on a call.</p>
+    </div>
+    <ul class="rows">
+      <li><a class="row-link" href="{{R}}case-studies.html#flaky-tests"><span class="metric">−80%</span><div><h3>Flaky end-to-end tests on a commerce platform</h3><p>Eight months of failures classified by root cause, a framework migration, and fixes coordinated across teams.</p></div><span class="go">Read →</span></a></li>
+      <li><a class="row-link" href="{{R}}case-studies.html#realtime-sync"><span class="metric">2-way</span><div><h3>Real-time sync between two platforms</h3><p>A bidirectional sync layer reconciling two different storage and permission models for live collaboration.</p></div><span class="go">Read →</span></a></li>
+      <li><a class="row-link" href="{{R}}case-studies.html#caching"><span class="metric">−30%</span><div><h3>Query latency at enterprise scale</h3><p>A Redis-backed caching and retrieval layer that also made retrieval 20% faster.</p></div><span class="go">Read →</span></a></li>
+      <li><a class="row-link" href="{{R}}case-studies.html#llm-orchestration"><span class="metric">LLM</span><div><h3>Orchestration for a prompt-to-app product</h3><p>The orchestration, prompt management and output-validation layers of a generative AI product.</p></div><span class="go">Read →</span></a></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="notes" aria-labelledby="notes-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Field notes</p>
+      <h2 id="notes-h">How I think about these problems</h2>
+    </div>
+    <ul class="rows">
+      <li><a class="row-link" href="{{R}}notes/kafka-consumer-duplicate-messages-rebalance.html"><span class="metric font-mono text-base font-normal">Kafka</span><div><h3>Why Kafka consumers process messages twice, and how to stop it</h3><p>The four ways duplicates happen, and the fixes that hold up under deploys and crashes.</p></div><span class="go">Read →</span></a></li>
+      <li><a class="row-link" href="{{R}}notes/designing-verifiable-coding-tasks-for-ai-agents.html"><span class="metric font-mono text-base font-normal">AI evals</span><div><h3>Designing verifiable coding tasks for AI agents</h3><p>What makes a task hard for the right reasons, and verifiers that can't be gamed.</p></div><span class="go">Read →</span></a></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Questions</p>
+      <h2 id="faq-h">Frequently asked</h2>
+    </div>
+    <div class="faq">
+      {{FAQ}}
+    </div>
+  </div>
+</section>
+
+<section class="section" id="contact" aria-labelledby="contact-h">
+  <div class="wrap contact">
+    <div class="grid content-start gap-5">
+      <p class="eyebrow">Contact</p>
+      <h2 id="contact-h">Tell me what's breaking.</h2>
+      <p class="lead">Email works best. I reply within one business day with either a few questions or a time for a call.</p>
+      <div class="email-line">
+        <output id="email">neerajdana9@gmail.com</output>
+        <button class="copy-btn" type="button" id="copy-email" data-copy="neerajdana9@gmail.com">Copy</button>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="mailto:neerajdana9@gmail.com?subject=System%20review%20enquiry">Email me</a>
+        <a class="btn btn-ghost" href="https://linkedin.com/in/neeraj-dana" rel="me">Message on LinkedIn</a>
+      </div>
+    </div>
+    <div class="brief">
+      <p class="eyebrow">A useful first email covers</p>
+      <ol>
+        <li>What the system does, in a sentence or two</li>
+        <li>Rough scale: events per second, users, services</li>
+        <li>The symptom you're seeing, and since when</li>
+        <li>Your timeline and who I'd be working with</li>
+      </ol>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,12 @@
+{
+  "name": "neerajdana.com",
+  "private": true,
+  "description": "Static site for neerajdana.com",
+  "scripts": {
+    "build": "python3 build.py"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.1.11",
+    "tailwindcss": "4.1.11"
+  }
+}
