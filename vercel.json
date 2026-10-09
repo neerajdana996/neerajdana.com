@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install --no-audit --no-fund",
+  "buildCommand": "python3 -m venv .vercel-venv && .vercel-venv/bin/python -m pip install pillow && PATH=\"$PWD/.vercel-venv/bin:$PATH\" npm run build",
+  "outputDirectory": "dist"
+}

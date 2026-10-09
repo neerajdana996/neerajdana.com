@@ -3,3 +3,5 @@ dist/
 preview/
 *.zip
 __pycache__/
+.vercel
+.env*

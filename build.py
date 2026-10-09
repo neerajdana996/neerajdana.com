@@ -458,19 +458,30 @@ Sitemap: {SITE}/sitemap.xml
 
 def make_og(path):
     from PIL import Image, ImageDraw, ImageFont
+
+    def font(filename, size):
+        candidates = (
+            Path("/usr/share/fonts/truetype/dejavu") / filename,
+            Path("/usr/local/share/fonts") / filename,
+            Path("/opt/homebrew/share/fonts") / filename,
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                return ImageFont.truetype(candidate, size)
+        return ImageFont.load_default(size=size)
+
     W, H = 1200, 630
     im = Image.new("RGB", (W, H), "#0D1016")
     d = ImageDraw.Draw(im)
-    fonts = "/usr/share/fonts/truetype/dejavu/"
-    bold, mono = ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 96), ImageFont.truetype(fonts + "DejaVuSansMono.ttf", 26)
+    bold, mono = font("DejaVuSans-Bold.ttf", 96), font("DejaVuSansMono.ttf", 26)
     d.rectangle([0, 0, 14, H], fill="#8FA8FF")
     d.text((80, 90), "FOUNDER, PROFRACT · 11+ YEARS IN PRODUCTION", font=mono, fill="#A6AEBD")
     d.text((80, 150), "Neeraj Dana", font=bold, fill="#E6E9EF")
-    sub = ImageFont.truetype(fonts + "DejaVuSans.ttf", 38)
+    sub = font("DejaVuSans.ttf", 38)
     d.text((80, 285), "Distributed systems · real-time platforms", font=sub, fill="#8FA8FF")
     d.text((80, 340), "production AI", font=sub, fill="#8FA8FF")
     d.line([80, 450, 1120, 450], fill="#262E3B", width=2)
-    d.text((80, 485), "Atlassian · ServiceNow · Egnyte", font=ImageFont.truetype(fonts + "DejaVuSans-Bold.ttf", 30), fill="#E6E9EF")
+    d.text((80, 485), "Atlassian · ServiceNow · Egnyte", font=font("DejaVuSans-Bold.ttf", 30), fill="#E6E9EF")
     d.text((80, 540), "MVP to production · architecture & scaling · neerajdana.com", font=mono, fill="#A6AEBD")
     im.save(path, optimize=True)
 
